@@ -60,7 +60,24 @@
   touch-action: manipulation;
   transition: transform .32s var(--ease-spring), opacity .1s, filter .1s;
 }
-.calc-key.zero { grid-column: span 2; aspect-ratio: auto; border-radius: 28px; text-align: left; padding-left: 30px; }
+.calc-key.zero {
+  grid-column: span 2;
+  aspect-ratio: auto;
+  border-radius: 999px;
+  text-align: left;
+  padding-left: 32px;
+  font-size: 28px;
+  letter-spacing: 1px;
+  /* 质感：明显渐变 + 顶部内高光 + 底部内暗边 + 柔和投影 */
+  background: linear-gradient(180deg, #52525A 0%, #2C2C30 70%, #26262A 100%);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, .16),
+    inset 0 -2px 0 rgba(0, 0, 0, .45),
+    0 3px 7px rgba(0, 0, 0, .32);
+}
+html[data-theme="dark"] .calc-key.zero {
+  background: linear-gradient(180deg, #7A7885 0%, #5A5866 70%, #52504E 100%);
+}
 .calc-key.util { background: var(--key-light); color: #000; font-size: 24px; }
 .calc-key.num { background: var(--key-dark); }
 .calc-key.op { background: var(--key-accent); font-size: 31px; }
@@ -75,17 +92,30 @@
 }
 .calc-key.util.pressed { filter: brightness(1.15); }
 
+/* 模式切换：右上角毛玻璃胶囊（原底部文字链接，移至顶栏） */
 .calc-mode-toggle {
-  margin-top: 12px;
-  color: rgba(255,255,255,.55);
-  font-size: 13px;
-  padding: 8px;
-  align-self: center;
+  position: absolute;
+  top: calc(var(--sb-h) + 8px);
+  right: 14px;
+  z-index: 6;
+  padding: 7px 15px;
+  border-radius: 999px;
+  border: none;
+  border: .5px solid rgba(255,255,255,.22);
+  background: rgba(255,255,255,.12);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  color: rgba(255,255,255,.92);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: background .18s ease, transform .18s var(--ease-spring, ease);
 }
+.calc-mode-toggle:active { background: rgba(255,255,255,.3); transform: scale(.92); }
 
 /* 科学计算器（横屏/紧凑） */
 .calc-root.sci .calc-key { font-size: 22px; }
 .calc-root.sci .calc-std-grid { gap: 8px; }
 .calc-root.sci .calc-display { min-height: 60px; }
 .calc-root.sci .calc-num { font-size: 48px; }
-.calc-root.sci .calc-mode-toggle { display: none; }

@@ -1,9 +1,9 @@
-/* ============ 天气 ============ */
+/* ============ 天气：左上角 + → 城市管理（搜索添加/长按删除），城市名居中 ============ */
 
-import { el, Bus } from '../core/utils.js';
+import { el, Bus, haptic } from '../core/utils.js';
 import { Settings } from '../core/db.js';
 import { createNav, navBtn } from '../core/nav.js';
-import { toast, loading, escapeHtml } from '../core/ui.js';
+import { toast, loading, escapeHtml, confirmDialog } from '../core/ui.js';
 import { Apps as AppIcons, wIcon, wText } from '../core/icons.js';
 import { WeatherEngine } from '../api/weather.js';
 
@@ -11,11 +11,25 @@ let nav = null;
 let root = null;
 let ctxRef = null;
 
-/* 头部返回键（深色背景上的白色圆钮） */
-const WT_BACK_BTN = '<button class="wt-back" id="wt-back" aria-label="返回主屏幕"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4.5l-7.5 7.5 7.5 7.5"/></svg></button>';
-function wireBack(scope) {
-  const b = scope.querySelector('#wt-back');
-  if (b) b.onclick = () => { ctxRef && ctxRef.close(); };
+/* 头部：左上加号（城市管理） · 居中城市名 · 右侧刷新
+   返回主屏依靠底部横杠上滑（多任务卡片流）关闭本应用 */
+const PLUS_SVG = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+const REFRESH_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6M20.5 3.5V9H15"/></svg>';
+
+function headerHTML(cityName) {
+  return `
+    <div class="wt-header">
+      <button class="wt-plus" id="wt-plus" aria-label="城市管理">${PLUS_SVG}</button>
+      <div class="wt-city" id="wt-city">${escapeHtml(cityName || '…')}</div>
+      <button class="wt-refresh" id="wt-refresh" aria-label="刷新">${REFRESH_SVG}</button>
+    </div>`;
+}
+
+function wireHeader(scope) {
+  const plus = scope.querySelector('#wt-plus');
+  if (plus) plus.onclick = () => openCityManage();
+  const rf = scope.querySelector('#wt-refresh');
+  if (rf) rf.onclick = () => { haptic(6); renderMain(); };
 }
 
 export default {
@@ -46,20 +60,13 @@ async function renderMain() {
       pageEl.classList.add('weather-page');
       body.classList.add('weather-body');
       body.innerHTML = `
-        <div class="wt-header">
-          ${WT_BACK_BTN}
-          <div class="wt-city" id="wt-city">…</div>
-          <div class="wt-refresh" id="wt-refresh"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6M20.5 3.5V9H15"/></svg></div>
-          <div class="wt-search" id="wt-search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg></div>
-        </div>
+        ${headerHTML()}
         <div class="wt-loading"><div class="spinner" style="border-color:rgba(255,255,255,.3);border-top-color:#fff"></div></div>`;
-      body.querySelector('#wt-refresh').onclick = () => renderWeather(body, true);
-      body.querySelector('#wt-search').onclick = openCitySearch;
-      wireBack(body);
+      wireHeader(body);
       renderWeather(body);
     },
   });
-  nav.setRoot(page);
+  nav.resetToRoot(page);
 }
 
 async function renderWeather(body, force = false) {
@@ -79,20 +86,13 @@ async function renderWeather(body, force = false) {
     buildView(target, data, city);
   } catch (e) {
     target.innerHTML = `
-      <div class="wt-header">
-        ${WT_BACK_BTN}
-        <div class="wt-city">${escapeHtml(city.city || '天气')}</div>
-        <div class="wt-refresh" id="wt-refresh"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6M20.5 3.5V9H15"/></svg></div>
-        <div class="wt-search" id="wt-search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg></div>
-      </div>
+      ${headerHTML(city.city || '天气')}
       <div class="wt-error">
         <div>☹️</div><div>天气数据获取失败</div><div class="wt-err-detail">${escapeHtml(e.message || '网络不可用')}</div>
         <button class="btn-fill" id="wt-retry">重试</button>
       </div>`;
+    wireHeader(target);
     target.querySelector('#wt-retry').onclick = () => renderMain();
-    target.querySelector('#wt-refresh')?.addEventListener('click', () => renderMain());
-    target.querySelector('#wt-search')?.addEventListener('click', openCitySearch);
-    wireBack(target);
   }
 }
 
@@ -105,12 +105,7 @@ function buildView(target, data, city) {
   const windDir = windDirs[Math.round(((cur.windDir || 0) % 360) / 45) % 8];
 
   target.innerHTML = `
-    <div class="wt-header">
-      ${WT_BACK_BTN}
-      <div class="wt-city" id="wt-city">${escapeHtml(city.city || '—')}</div>
-      <div class="wt-refresh" id="wt-refresh"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6M20.5 3.5V9H15"/></svg></div>
-      <div class="wt-search" id="wt-search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg></div>
-    </div>
+    ${headerHTML(city.city || '—')}
     <div class="wt-now">
       <div class="wt-big-icon">${wIcon(cur.code, !cur.isDay)}</div>
       <div class="wt-temp num">${U(cur.temp)}°</div>
@@ -143,9 +138,7 @@ function buildView(target, data, city) {
     </div>
     <div class="wt-footer">数据来源 Open-Meteo · 更新于 ${new Date(WeatherEngine.updatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</div>`;
 
-  target.querySelector('#wt-refresh').onclick = () => renderWeather(target, true);
-  target.querySelector('#wt-search').onclick = openCitySearch;
-  wireBack(target);
+  wireHeader(target);
   const hours = target.querySelector('#wt-hours');
   data.hourly.slice(0, 24).forEach((h, i) => {
     const d = new Date(h.time);
@@ -213,30 +206,35 @@ function drawTempLine(svg, temps) {
     <path d="${path}" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".92"/>`;
 }
 
-/* ---------- 城市搜索 ---------- */
-function openCitySearch() {
+/* ============ 城市管理：搜索添加 · 点击切换 · 长按删除 ============ */
+function openCityManage() {
   const page = nav.makePage({
-    title: '搜索城市', back: '天气',
+    title: '城市管理',
+    back: '天气',
     build(body) {
       body.classList.add('pad');
       body.innerHTML = `
         <div class="searchbar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
-          <input placeholder="输入城市名，如：上海" id="cs-input">
+          <input placeholder="搜索城市并添加，如：上海" id="cm-input">
         </div>
-        <div class="inset-group">
-          <div class="inset-card">
-            <div class="row" id="cs-locate">
-              <div class="row-icon" style="background:var(--accent)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M20.5 10.5c0 6.5-8.5 12-8.5 12s-8.5-5.5-8.5-12a8.5 8.5 0 0 1 17 0z"/><circle cx="12" cy="10.5" r="3"/></svg></div>
-              <div class="row-label">使用当前定位</div>
-              <div class="row-val">GPS</div>
-            </div>
+        <div id="cm-results"></div>
+        <div class="inset-group-title" style="margin-top:16px">我的城市 · 长按删除</div>
+        <div class="inset-group"><div class="inset-card" id="cm-list"></div></div>
+        <div class="inset-group"><div class="inset-card">
+          <div class="row" id="cm-locate">
+            <div class="row-icon" style="background:var(--accent)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M20.5 10.5c0 6.5-8.5 12-8.5 12s-8.5-5.5-8.5-12a8.5 8.5 0 0 1 17 0z"/><circle cx="12" cy="10.5" r="3"/></svg></div>
+            <div class="row-label">使用当前定位</div>
+            <div class="row-val">GPS</div>
           </div>
-        </div>
-        <div id="cs-results"></div>`;
+        </div></div>
+        <div class="cm-tip">提示：点击城市切换 · 长按城市 0.5 秒删除</div>`;
 
-      const input = body.querySelector('#cs-input');
-      const results = body.querySelector('#cs-results');
+      renderCityList(body);
+
+      /* 搜索添加 */
+      const input = body.querySelector('#cm-input');
+      const results = body.querySelector('#cm-results');
       let timer;
       input.addEventListener('input', () => {
         clearTimeout(timer);
@@ -246,28 +244,29 @@ function openCitySearch() {
           results.innerHTML = '<div style="display:flex;justify-content:center;padding:20px"><div class="spinner"></div></div>';
           try {
             const list = await WeatherEngine.searchCity(q);
-            if (!list.length) { results.innerHTML = '<div class="empty-state" style="padding:30px"><div>没有找到城市</div></div>'; return; }
+            if (!list.length) { results.innerHTML = '<div class="empty-state" style="padding:24px"><div>没有找到城市</div></div>'; return; }
             results.innerHTML = `<div class="inset-group"><div class="inset-card">${list.map((c, i) => `
               <div class="row" data-i="${i}"><div class="row-label">
                 <div style="font-size:16.5px">${escapeHtml(c.city)}</div>
                 <div style="font-size:12.5px;color:var(--text-2)">${escapeHtml([c.admin, c.country].filter(Boolean).join(' · '))}</div>
-              </div><div class="row-val tappable">切换</div></div>`).join('')}</div></div>`;
+              </div><div class="row-val tappable">添加</div></div>`).join('')}</div></div>`;
             results.querySelectorAll('[data-i]').forEach(r => {
               r.onclick = async () => {
                 const c = list[+r.dataset.i];
                 await WeatherEngine.setCity(c);
-                toast('已切换到 ' + c.city);
+                toast('已添加并切换到 ' + c.city);
                 nav.pop();
                 renderMain();
               };
             });
           } catch (e) {
-            results.innerHTML = `<div class="empty-state" style="padding:30px"><div>搜索失败：${escapeHtml(e.message || '')}</div></div>`;
+            results.innerHTML = `<div class="empty-state" style="padding:24px"><div>搜索失败：${escapeHtml(e.message || '')}</div></div>`;
           }
         }, 400);
       });
 
-      body.querySelector('#cs-locate').onclick = async () => {
+      /* 定位 */
+      body.querySelector('#cm-locate').onclick = async () => {
         const ld = loading('正在定位…');
         try {
           const c = await WeatherEngine.locate();
@@ -284,4 +283,76 @@ function openCitySearch() {
     },
   });
   nav.push(page);
+}
+
+async function renderCityList(body) {
+  const listEl = body.querySelector('#cm-list');
+  if (!listEl) return;
+  const cities = await WeatherEngine.getCities();
+  const cur = await WeatherEngine.getCity();
+
+  if (!cities.length) {
+    listEl.innerHTML = `<div class="row static"><div class="row-label" style="color:var(--text-2)">暂无城市，上方搜索添加</div></div>`;
+    return;
+  }
+
+  listEl.innerHTML = cities.map((c, i) => `
+    <div class="row" data-i="${i}">
+      <div class="row-label">
+        <div style="font-size:16.5px;font-weight:600">${escapeHtml(c.city)}</div>
+        <div style="font-size:12.5px;color:var(--text-2)">${escapeHtml([c.admin, c.country].filter(Boolean).join(' · '))}</div>
+      </div>
+      ${WeatherEngine._sameCity(c, cur) ? '<span class="badge green" style="flex:none">当前</span>' : '<div class="row-val tappable">切换</div>'}
+    </div>`).join('');
+
+  listEl.querySelectorAll('[data-i]').forEach(r => {
+    const c = cities[+r.dataset.i];
+    let t = null;
+    let longFired = false; // 长按已触发 → 抑制随后的 click（避免误触切换）
+    let sx = 0, sy = 0;
+
+    /* 点击 → 切换城市 */
+    r.onclick = async () => {
+      if (longFired) { longFired = false; return; }
+      if (WeatherEngine._sameCity(c, cur)) return;
+      haptic(6);
+      await WeatherEngine.setCity(c);
+      toast('已切换到 ' + c.city);
+      nav.pop();
+      renderMain();
+    };
+
+    /* 长按 0.5 秒 → 删除确认（移动超 12px 视为滚动，取消长按） */
+    r.addEventListener('pointerdown', (e) => {
+      longFired = false;
+      sx = e.clientX; sy = e.clientY;
+      t = setTimeout(async () => {
+        longFired = true;
+        haptic(10);
+        const ok = await confirmDialog('删除城市', `将「${c.city}」从城市列表移除？`, { okText: '删除', danger: true });
+        if (!ok) return;
+        const remaining = await WeatherEngine.removeCity(c);
+        /* 删除的是当前城市 → 自动切到列表首个 */
+        if (WeatherEngine._sameCity(c, cur)) {
+          if (remaining.length) {
+            await WeatherEngine.setCity(remaining[0]);
+            renderMain(); // 底层根页换城市，管理页保持在最上
+            nav.pop();
+          } else {
+            toast('至少保留一个城市');
+            renderCityList(body);
+            return;
+          }
+        }
+        toast('已删除「' + c.city + '」');
+        renderCityList(body);
+      }, 520);
+    });
+    r.addEventListener('pointermove', (e) => {
+      if (Math.hypot(e.clientX - sx, e.clientY - sy) > 12) clearTimeout(t);
+    }, { passive: true });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev =>
+      r.addEventListener(ev, () => clearTimeout(t), { passive: true }));
+    r.addEventListener('contextmenu', (e) => e.preventDefault());
+  });
 }

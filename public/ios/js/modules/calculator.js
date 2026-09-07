@@ -55,6 +55,7 @@ function buildUI() {
   const sci = mode === 'scientific';
   root.innerHTML = `
     <div class="calc-root ${sci ? 'sci' : ''}">
+      <button class="calc-mode-toggle" id="calc-mode-btn" aria-label="切换科学计算器">${sci ? '标准' : '科学'}</button>
       <div class="calc-display">
         <div class="calc-expr" id="calc-expr"></div>
         <div class="calc-num num" id="calc-num">0</div>
@@ -103,12 +104,14 @@ function buildUI() {
         <button class="calc-key num" data-k=".">.</button>
         <button class="calc-key op eq" data-k="=" id="calc-eq">=</button>
       </div>
-      ${!sci ? '<button class="calc-mode-toggle" id="calc-sci-toggle">科学计算器 ⟳</button>' : '<button class="calc-mode-toggle" id="calc-std-toggle">返回标准计算器</button>'}
     </div>`;
 
   root.querySelectorAll('.calc-key').forEach(bindKey);
-  root.querySelector('#calc-sci-toggle')?.addEventListener('click', () => { mode = 'scientific'; buildUI(); });
-  root.querySelector('#calc-std-toggle')?.addEventListener('click', () => { mode = 'standard'; buildUI(); });
+  root.querySelector('#calc-mode-btn')?.addEventListener('click', () => {
+    haptic(6);
+    mode = mode === 'scientific' ? 'standard' : 'scientific';
+    buildUI();
+  });
   render();
 }
 

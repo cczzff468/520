@@ -1,21 +1,27 @@
-/* ============ 主屏幕：应用网格 / Dock / 天气小组件 / 实时图标 ============ */
+/* ============ 主屏幕：应用网格 / Dock / 天气小组件 / 抖动编辑 / 实时图标 ============ */
 
-import { el, Bus } from './utils.js';
+import { el, Bus, haptic } from './utils.js';
 import { Apps as AppIcons, wIcon, wText } from './icons.js';
 import { openApp, Apps as Registry } from './applayer.js';
 import { WeatherEngine } from '../api/weather.js';
-import { onSwipe } from './utils.js';
+import { Settings } from './db.js';
+import { toast } from './ui.js';
 
 /* 按使用频率与功能分组编排：小组件旁放时钟/天气，其次是相册/通讯录，第三排工具类，第四排其他
    朋友圈不再单独占桌面图标（与微信深度整合，入口保留在微信「我」页） */
 const GRID_ORDER = ['clock', 'weather', 'photos', 'contacts', 'notes', 'calendar', 'calculator', 'recorder', 'compass', 'themes', 'settings'];
 const DOCK_ORDER = ['wechat', 'browser', 'camera', 'music'];
 const LIVE_ICONS = ['clock', 'calendar'];
+const X_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+const DEFAULT_LAYOUT = () => ({ grid: [...GRID_ORDER], dock: [...DOCK_ORDER], hidden: [] });
 
 export const Home = {
   _iconEls: {},
+  editing: false,
+  layout: null,
 
-  init() {
+  async init() {
     const home = document.getElementById('home');
     home.innerHTML = '';
     this.grid = el('div', 'app-grid');
@@ -27,37 +33,63 @@ export const Home = {
     this.dots.innerHTML = '<i class="on"></i>';
     home.append(this.grid, this.dots, this.dock);
 
-    // 天气小组件
+    /* 布局持久化：顺序 + 已删除图标 */
+    const saved = await Settings.load('homeLayout', null);
+    this.layout = (saved && Array.isArray(saved.grid) && Array.isArray(saved.dock)) ? saved : DEFAULT_LAYOUT();
+    this.layout.hidden = this.layout.hidden || [];
+    /* 兼容后续新增的默认应用：自动补到网格末尾 */
+    GRID_ORDER.concat(DOCK_ORDER).forEach(id => {
+      if (!this.layout.grid.includes(id) && !this.layout.dock.includes(id) && !this.layout.hidden.includes(id)) {
+        this.layout.grid.push(id);
+      }
+    });
+
+    /* 天气小组件（截图样式：蓝色渐变大温度卡片） */
     this.widget = el('div', 'home-widget');
     this.widget.innerHTML = `<div class="hw-inner">
-      <div class="hw-city">—</div>
-      <div class="hw-temp">--°</div>
-      <div class="hw-cond">加载中</div>
-      <div class="hw-hilo">--° --°</div>
-      <div class="hw-time"><div class="hw-clock num">--:--</div><div class="hw-date">--</div></div>
-      <div class="hw-icon"></div>
+      <div class="hw-top">
+        <div class="hw-main">
+          <div class="hw-temp"><span class="hw-t">--</span><span class="hw-deg">°</span></div>
+          <div class="hw-cond">加载中</div>
+        </div>
+        <div class="hw-icon"></div>
+      </div>
+      <div class="hw-bottom">
+        <div class="hw-left">
+          <div class="hw-air">--</div>
+          <div class="hw-hilo">--° ~ --°</div>
+        </div>
+        <div class="hw-city">—</div>
+      </div>
     </div>`;
-    this.widget.onclick = () => openApp('weather');
-    this.grid.appendChild(this.widget);
+    this.widget.onclick = () => { if (!this.editing) openApp('weather'); };
 
-    // 应用图标
-    GRID_ORDER.forEach(id => this.grid.appendChild(this.buildIcon(id)));
-    DOCK_ORDER.forEach(id => this.dock.appendChild(this.buildIcon(id)));
+    this.renderGrid();
 
-    // 实时图标每 20 秒刷新
+    /* 实时图标每 20 秒刷新 */
     this._liveTimer = setInterval(() => this.refreshLiveIcons(), 20000);
-    // 小组件时钟每分钟
-    this._widgetTimer = setInterval(() => this.renderWidgetClock(), 10000);
 
-    // 未读徽标
+    /* 未读徽标 */
     Bus.on('wechat:unread', (n) => this.updateBadge('wechat', n));
     Bus.on('music:playing', () => this.updateIsland());
 
-    // 下拉通知中心区域 → 打开控制中心（从右上角下滑由 control.js 监听）
-    onSwipe(home, { down: () => { Bus.emit('gesture:pull-down'); } });
+    /* 编辑模式：点击空白（壁纸）退出 */
+    home.addEventListener('click', (e) => {
+      if (!this.editing) return;
+      if (e.target.closest('.app-icon-cell') || e.target.closest('.home-widget') || e.target.closest('.home-edit-bar')) return;
+      this.exitEdit();
+    });
 
-    this.renderWidgetClock();
     this.loadWeather();
+  },
+
+  renderGrid() {
+    this.grid.querySelectorAll('.app-icon-cell, .home-widget').forEach(n => n.remove());
+    this.dock.querySelectorAll('.app-icon-cell').forEach(n => n.remove());
+    this._iconEls = {};
+    this.grid.appendChild(this.widget);
+    this.layout.grid.filter(id => !this.layout.hidden.includes(id)).forEach(id => this.grid.appendChild(this.buildIcon(id)));
+    this.layout.dock.filter(id => !this.layout.hidden.includes(id)).forEach(id => this.dock.appendChild(this.buildIcon(id)));
   },
 
   buildIcon(id) {
@@ -68,14 +100,181 @@ export const Home = {
       <div class="app-icon-shape ${LIVE_ICONS.includes(id) ? 'live-icon' : ''}">${AppIcons[id]()}</div>
       <div class="app-icon-label">${app ? app.name : id}</div>`;
     this._iconEls[id] = cell;
-    cell.querySelector('.app-icon-shape').addEventListener('click', (e) => {
-      e.stopPropagation();
-      openApp(id, cell.querySelector('.app-icon-shape'));
+
+    const shape = cell.querySelector('.app-icon-shape');
+    /* 点击打开（绑在 cell：鼠标指针捕获后 click 目标为 cell；触摸冒泡也到 cell） */
+    cell.addEventListener('click', (e) => {
+      if (this.editing) return; // 编辑模式点图标不打开
+      if (e.target.closest && e.target.closest('.icon-del')) return;
+      openApp(id, shape);
     });
+
+    /* 长按 550ms → 进入抖动编辑模式 */
+    cell.addEventListener('pointerdown', () => {
+      clearTimeout(this._lp);
+      if (this.editing) return;
+      this._lp = setTimeout(() => this.enterEdit(), 550);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev =>
+      cell.addEventListener(ev, () => clearTimeout(this._lp)));
+    cell.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    /* 编辑模式下的拖拽排序（仅同容器内互换） */
+    this._bindDrag(cell);
+
     return cell;
   },
 
+  /* ---------- 抖动编辑模式：拖动排序 + 删除 + 恢复默认 ---------- */
+  enterEdit() {
+    if (this.editing) return;
+    this.editing = true;
+    haptic(10);
+    document.getElementById('home').classList.add('edit-mode');
+    [this.grid, this.dock].forEach(c => c.classList.add('edit'));
+    const cells = [...this.grid.querySelectorAll('.app-icon-cell'), ...this.dock.querySelectorAll('.app-icon-cell')];
+    cells.forEach(cell => {
+      cell.classList.add('jiggle');
+      cell.style.animationDelay = (Math.random() * 0.28).toFixed(2) + 's';
+      this._addDelButton(cell);
+    });
+    this.widget.classList.add('jiggle');
+    this.widget.style.animationDelay = '0.1s';
+
+    this._editBar = el('div', 'home-edit-bar');
+    this._editBar.innerHTML = `
+      <button class="heb-btn ghost" id="heb-reset">恢复默认</button>
+      <button class="heb-btn fill" id="heb-done">完成</button>`;
+    document.getElementById('home').appendChild(this._editBar);
+    this._editBar.querySelector('#heb-done').onclick = () => this.exitEdit();
+    this._editBar.querySelector('#heb-reset').onclick = () => {
+      this.layout = DEFAULT_LAYOUT();
+      this.exitEdit(true); // 跳过持久化：避免用旧 DOM 顺序覆盖刚重置的布局
+      this.renderGrid();
+      this._persistLayout();
+      toast('已恢复默认布局');
+    };
+  },
+
+  exitEdit(skipPersist = false) {
+    if (!this.editing) return;
+    this.editing = false;
+    if (!skipPersist) this._persistLayout();
+    haptic(6);
+    document.getElementById('home').classList.remove('edit-mode');
+    [this.grid, this.dock].forEach(c => c.classList.remove('edit'));
+    [...this.grid.querySelectorAll('.app-icon-cell'), ...this.dock.querySelectorAll('.app-icon-cell')].forEach(cell => {
+      cell.classList.remove('jiggle');
+      cell.style.animationDelay = '';
+      cell.querySelectorAll('.icon-del').forEach(b => b.remove());
+    });
+    this.widget.classList.remove('jiggle');
+    this.widget.style.animationDelay = '';
+    if (this._editBar) { this._editBar.remove(); this._editBar = null; }
+  },
+
+  _addDelButton(cell) {
+    const shape = cell.querySelector('.app-icon-shape');
+    if (!shape || shape.querySelector('.icon-del')) return;
+    shape.style.position = 'relative';
+    const btn = el('button', 'icon-del');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', '删除应用');
+    btn.innerHTML = X_SVG;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!this.editing) return;
+      haptic(8);
+      const total = this.grid.querySelectorAll('.app-icon-cell').length + this.dock.querySelectorAll('.app-icon-cell').length;
+      if (total <= 1) { toast('至少保留一个应用图标'); return; }
+      const id = cell.dataset.app;
+      cell.style.transition = 'transform .26s var(--ease-ios, ease), opacity .26s ease';
+      cell.style.transform = 'scale(.25)';
+      cell.style.opacity = '0';
+      setTimeout(() => {
+        this.layout.hidden.push(id);
+        cell.remove();
+        this._persistLayout();
+      }, 250);
+    });
+    shape.appendChild(btn);
+  },
+
+  _bindDrag(cell) {
+    const container = () => (cell.parentElement === this.dock ? this.dock : this.grid);
+    cell.addEventListener('pointerdown', (e) => {
+      if (e.target.closest && e.target.closest('.icon-del')) return; // 删除按钮不拖拽
+      /* 鼠标显式捕获：无论是否已进入编辑模式，拖拽过程中 pointermove
+         始终派发到本格子（触摸天然隐式捕获，无需处理） */
+      if (e.pointerType === 'mouse') { try { cell.setPointerCapture(e.pointerId); } catch (err) { /* noop */ } }
+      const startX = e.clientX, startY = e.clientY;
+      let dragging = false;
+      const onMove = (ev) => {
+        if (!this.editing) {
+          /* 长按未完成时大幅移动 → 取消长按（iOS 行为） */
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 14) clearTimeout(this._lp);
+          return;
+        }
+        const dx = ev.clientX - startX, dy = ev.clientY - startY;
+        if (!dragging && Math.hypot(dx, dy) > 10) {
+          dragging = true;
+          cell.classList.add('dragging');
+          cell.style.animation = 'none'; // 拖拽中停止抖动
+        }
+        if (!dragging) return;
+        cell.style.transform = `translate(${dx}px, ${dy}px) scale(1.08)`;
+        this._maybeReorder(cell, ev, container());
+      };
+      const onUp = () => {
+        cell.removeEventListener('pointermove', onMove);
+        cell.removeEventListener('pointerup', onUp);
+        cell.removeEventListener('pointercancel', onUp);
+        if (dragging) {
+          cell.classList.remove('dragging');
+          cell.style.transform = '';
+          cell.style.animation = ''; // 恢复抖动
+          this._persistLayout();
+          haptic(6);
+        }
+      };
+      cell.addEventListener('pointermove', onMove);
+      cell.addEventListener('pointerup', onUp);
+      cell.addEventListener('pointercancel', onUp);
+    });
+  },
+
+  _maybeReorder(dragCell, ev, container) {
+    const target = this._nearestCell(container, ev.clientX, ev.clientY, dragCell);
+    if (!target || target === dragCell) return;
+    const children = [...container.children];
+    const iDrag = children.indexOf(dragCell);
+    const iTarget = children.indexOf(target);
+    if (iDrag < 0 || iTarget < 0) return;
+    if (iDrag < iTarget) container.insertBefore(dragCell, target.nextSibling);
+    else container.insertBefore(dragCell, target);
+  },
+
+  _nearestCell(container, x, y, exclude) {
+    let best = null, bestD = Infinity;
+    for (const c of container.children) {
+      if (c === exclude || c === this.widget || !c.classList.contains('app-icon-cell')) continue;
+      const r = c.getBoundingClientRect();
+      const dx = Math.max(r.left - x, 0, x - r.right);
+      const dy = Math.max(r.top - y, 0, y - r.bottom);
+      const d = Math.hypot(dx, dy);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    return bestD < 130 ? best : null;
+  },
+
+  _persistLayout() {
+    this.layout.grid = [...this.grid.querySelectorAll('.app-icon-cell')].map(c => c.dataset.app);
+    this.layout.dock = [...this.dock.querySelectorAll('.app-icon-cell')].map(c => c.dataset.app);
+    Settings.setQuiet('homeLayout', this.layout);
+  },
+
   refreshLiveIcons() {
+    if (this.editing) return; // 编辑模式下刷新会清掉删除角标
     LIVE_ICONS.forEach(id => {
       const cell = this._iconEls[id];
       if (cell) {
@@ -103,37 +302,33 @@ export const Home = {
     }
   },
 
-  renderWidgetClock() {
-    const d = new Date();
-    const clock = this.widget.querySelector('.hw-clock');
-    const date = this.widget.querySelector('.hw-date');
-    if (!clock) return;
-    clock.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    date.textContent = `${d.getMonth() + 1}月${d.getDate()}日 ${['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]}`;
-  },
-
   async loadWeather() {
     try {
       const data = await WeatherEngine.fetch();
       this.renderWeather(data);
     } catch (e) {
       const w = this.widget;
-      w.querySelector('.hw-cond').textContent = '暂无数据 · 点击重试';
-      w.querySelector('.hw-city').textContent = '天气';
+      const cond = w.querySelector('.hw-cond');
+      const city = w.querySelector('.hw-city');
+      if (cond) cond.textContent = '暂无数据 · 点击重试';
+      if (city) city.textContent = '天气';
     }
-    const off = Bus.on('weather:updated', (data) => this.renderWeather(data));
+    Bus.on('weather:updated', (data) => this.renderWeather(data));
   },
 
   renderWeather(data) {
-    const city = WeatherEngine.city || { city: '—' };
     const w = this.widget;
-    w.querySelector('.hw-city').textContent = (city.city || '').slice(0, 6);
-    w.querySelector('.hw-temp').textContent = WeatherEngine.toDisplay(data.current.temp) + '°';
+    if (!w || !w.querySelector('.hw-t')) return;
+    const city = WeatherEngine.city || { city: '—' };
+    const U = (c) => WeatherEngine.toDisplay(c);
+    const cur = data.current;
     const today = data.daily[0];
-    w.querySelector('.hw-holo')?.remove();
-    w.querySelector('.hw-hilo').textContent = `最高${WeatherEngine.toDisplay(today.max)}° 最低${WeatherEngine.toDisplay(today.min)}°`;
+    w.querySelector('.hw-t').textContent = U(cur.temp);
     w.querySelector('.hw-cond').textContent = data.current.code != null ? wText(data.current.code) : '';
-    w.querySelector('.hw-icon').innerHTML = wIcon(data.current.code, !data.current.isDay);
+    w.querySelector('.hw-icon').innerHTML = wIcon(cur.code, !cur.isDay);
+    w.querySelector('.hw-air').textContent = `湿度 ${cur.humidity ?? '--'}%`;
+    w.querySelector('.hw-hilo').textContent = `${U(today.max)}° ~ ${U(today.min)}°`;
+    w.querySelector('.hw-city').textContent = (city.city || '').slice(0, 6);
   },
 
   updateIsland() { /* 由 island.js 处理 */ },

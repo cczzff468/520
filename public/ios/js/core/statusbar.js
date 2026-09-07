@@ -175,9 +175,9 @@ export const Statusbar = {
       return c ? lumOf(darkenRGB(c, 0.25)) : 0;
     }
 
-    /* 控制中心 → 深色毛玻璃 → 白字 */
-    const cc = document.getElementById('control-center');
-    if (cc && cc.classList.contains('show')) return 0;
+    /* 多任务切换器 → 深色毛玻璃 → 白字 */
+    const ts = document.getElementById('task-switcher');
+    if (ts && ts.classList.contains('show')) return 0;
 
     /* 应用窗口 → 采样顶部条带的实际渲染元素 */
     const appWin = document.querySelector('#app-layer .app-window');

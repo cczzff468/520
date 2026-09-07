@@ -20,8 +20,37 @@ export const WeatherEngine = {
   async setCity(city) {
     this.city = city;
     await Settings.set('weatherCity', city);
+    await this.addCity(city); // 同步收入城市列表
     this.data = null;
     this.fetch(true);
+  },
+
+  /* ---------- 城市列表管理（城市管理界面） ---------- */
+  _sameCity(a, b) {
+    return a.city === b.city && Math.abs((a.lat || 0) - (b.lat || 0)) < 0.01;
+  },
+  async getCities() {
+    let list = await Settings.load('weatherCities', null);
+    if (!Array.isArray(list) || !list.length) {
+      list = [await this.getCity()];
+    }
+    return list.filter(c => c && c.city);
+  },
+  async saveCities(list) {
+    await Settings.set('weatherCities', list);
+  },
+  async addCity(city) {
+    const list = await this.getCities();
+    if (!list.some(x => this._sameCity(x, city))) {
+      list.push(city);
+      await this.saveCities(list);
+    }
+    return list;
+  },
+  async removeCity(city) {
+    const list = (await this.getCities()).filter(x => !this._sameCity(x, city));
+    await this.saveCities(list);
+    return list;
   },
 
   unit() { return Settings.get('weatherUnit', 'c'); },

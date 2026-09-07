@@ -1,6 +1,6 @@
 /* ============ 应用注册表 + 窗口管理（打开/关闭动画）+ 全局返回键 ============ */
 
-import { el, haptic, Bus, onSwipe } from './utils.js';
+import { el, haptic, Bus } from './utils.js';
 import { Statusbar } from './statusbar.js';
 import { resetNavs, navBack } from './nav.js';
 
@@ -21,7 +21,7 @@ const OWN_BACK_SEL = [
   '.nav-page:not(.leave) #mo-back',      // 朋友圈自带返回
   '#cp-back',                             // 指南针自带返回
   '#cam-back',                            // 相机自带返回
-  '#wt-back',                             // 天气自带返回
+  '#wt-plus',                             // 天气主页面（左上角加号，返回靠底部上滑手势）
   '.nav-page:not(.leave) [data-own-back]', // 通用：页面自带返回键（如扫一扫）
 ].join(', ');
 
@@ -118,25 +118,4 @@ window.__isAppOpen = isAppOpen;
 window.__currentAppId = () => (current ? current.app.id : null);
 window.__closeApp = closeApp;
 
-/* ---------- Home 指示条交互 ---------- */
-export function initHomeBar() {
-  const screen = document.getElementById('screen');
-  const HOME_ZONE = 40; // 仿 iOS：仅屏幕底部 40px 手势区内的上滑才回主屏
-
-  /* 注意：点击横杠本身不再返回主屏（用户要求）——
-     返回主屏仅保留两种方式：左上角全局返回键 / 底部 Home 手势区的上滑。
-     修复：应用内正常滚动列表（手指上滑查看下方内容）曾被误判为“回主屏”
-     导致一滚动就退出应用；现在中部/上部起始的滑动不再触发。 */
-  onSwipe(screen, {
-    up: (sx, sy, target) => {
-      const cc = document.getElementById('control-center');
-      if (cc.classList.contains('show')) return;         // 控制中心打开时上滑是关闭它
-      if (target && target.closest && target.closest('#control-center')) return; // 该滑动用于收起控制中心
-      if (target && target.closest && target.closest('#lock')) return;           // 锁屏上滑是解锁
-      if (!current) return;
-      const r = screen.getBoundingClientRect();
-      if (sy < r.bottom - HOME_ZONE) return; // 起点不在底部手势区 → 不触发
-      closeApp();
-    },
-  });
-}
+/* 底部 Home 手势区上滑交互由 switcher.js 接管（多任务卡片流） */

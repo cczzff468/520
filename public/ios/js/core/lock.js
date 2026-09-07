@@ -4,6 +4,7 @@ import { el, fmtDate, onSwipe, haptic } from './utils.js';
 import { applyWallpaper } from './wallpapers.js';
 import { Bus } from './utils.js';
 import { Statusbar } from './statusbar.js';
+import { toggleTorch } from './island.js';
 
 export const Lock = {
   init() {
@@ -38,7 +39,7 @@ export const Lock = {
     });
     lock.querySelector('#lock-torch').addEventListener('click', () => {
       haptic();
-      import('./control.js').then(m => m.toggleTorch());
+      toggleTorch();
     });
 
     applyWallpaper('lock');

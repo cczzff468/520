@@ -7,8 +7,9 @@ import { initTheme, applyTheme } from './core/theme.js';
 import { Statusbar } from './core/statusbar.js';
 import { Home } from './core/home.js';
 import { Lock } from './core/lock.js';
-import { Control } from './core/control.js';
-import { initHomeBar, Apps as Registry } from './core/applayer.js';
+import { Island } from './core/island.js';
+import { Switcher } from './core/switcher.js';
+import { Apps as Registry } from './core/applayer.js';
 import { applyWallpaper } from './core/wallpapers.js';
 import { Bus } from './core/utils.js';
 
@@ -54,9 +55,9 @@ async function boot() {
 
   Statusbar.init();
   Home.init();
-  Control.init();
+  Island.init();
   Lock.init();
-  initHomeBar();
+  Switcher.init();
   fitPhone();
   window.addEventListener('resize', fitPhone);
 

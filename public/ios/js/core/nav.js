@@ -90,6 +90,17 @@ export function createNav(host) {
     Bus.emit('nav:changed');
   }
 
+  /** 重置整个栈并设立新根页（避免反复 setRoot 造成页面堆叠） */
+  function resetToRoot(page) {
+    hasRoot = true;
+    navHost.innerHTML = '';
+    stack.length = 0;
+    navHost.appendChild(page.el);
+    stack.push(page);
+    runBuild(page);
+    Bus.emit('nav:changed');
+  }
+
   function push(page, { back = null } = {}) {
     page._back = back;
     page.el.classList.add('enter');
@@ -124,7 +135,7 @@ export function createNav(host) {
 
   function refresh(page) { /* 重新渲染当前页(可选) */ }
 
-  const api = { setRoot, push, pop, canPop, makePage, stack, host: navHost };
+  const api = { setRoot, resetToRoot, push, pop, canPop, makePage, stack, host: navHost };
   NAVS.push(api); // 注册到全局导航注册表
   return api;
 }

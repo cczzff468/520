@@ -95,8 +95,10 @@ export function haptic(ms = 10) {
 
 /* ---------- 滑动手势 ----------
    回调签名：up/down/left/right(startX, startY, target)
-   startX/startY 为手势起始坐标（clientX/Y），target 为 touchstart 落点元素，
-   供调用方判定“手势起始区域”（如仅底部 Home 指示条区域才回主屏）。 */
+   startX/startY 为手势起始坐标（clientX/Y），target 为落点元素，
+   供调用方判定“手势起始区域”（如仅底部 Home 指示条区域才回主屏）。
+   优先使用 Pointer 事件（鼠标/触摸统一，桌面可拖拽测试）；
+   不支持 PointerEvent 的环境回退 Touch 事件。 */
 export function onSwipe(node, { up, down, left, right, threshold = 46 } = {}) {
   let sx = 0, sy = 0, tracking = false, sTarget = null;
   const start = (e) => {
@@ -114,6 +116,11 @@ export function onSwipe(node, { up, down, left, right, threshold = 46 } = {}) {
     if (Math.abs(dx) > Math.abs(dy)) { const fn = dx > 0 ? right : left; fn && fn(...args); }
     else { const fn = dy > 0 ? down : up; fn && fn(...args); }
   };
+  if (window.PointerEvent) {
+    node.addEventListener('pointerdown', start, { passive: true });
+    node.addEventListener('pointerup', end, { passive: true });
+    return () => { node.removeEventListener('pointerdown', start); node.removeEventListener('pointerup', end); };
+  }
   node.addEventListener('touchstart', start, { passive: true });
   node.addEventListener('touchend', end, { passive: true });
   return () => { node.removeEventListener('touchstart', start); node.removeEventListener('touchend', end); };

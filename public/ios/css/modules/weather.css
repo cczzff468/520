@@ -13,24 +13,38 @@
   display: flex; align-items: center; gap: 8px;
   padding: calc(var(--sb-h) + 10px) 6px 18px;
 }
-.wt-back {
+.wt-plus, .wt-refresh {
   width: 34px; height: 34px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, .16);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff;
-  flex: none;
-}
-.wt-back:active { background: rgba(255, 255, 255, .3); }
-.wt-city { font-size: 26px; font-weight: 700; flex: 1; }
-.wt-refresh, .wt-search {
-  width: 34px; height: 34px;
-  border-radius: 50%;
+  border: none;
   background: rgba(255,255,255,.16);
   display: flex; align-items: center; justify-content: center;
   color: #fff;
+  flex: none;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background .18s ease, transform .18s var(--ease-ios, ease);
 }
-.wt-refresh:active, .wt-search:active { background: rgba(255,255,255,.3); }
+.wt-plus:active, .wt-refresh:active { background: rgba(255,255,255,.32); transform: scale(.9); }
+/* 城市名居中（左右按钮对称占位） */
+.wt-city {
+  flex: 1;
+  text-align: center;
+  font-size: 26px; font-weight: 700;
+  max-width: 62%;
+  margin: 0 auto;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wt-plus { margin-left: 0; }
+
+/* 城市管理页提示 */
+.cm-tip {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 6px 0 26px;
+}
 
 .wt-now {
   display: flex; flex-direction: column; align-items: center;

@@ -15,7 +15,6 @@ const UPLOAD_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" 
 const CHEV_SVG = '<svg width="9" height="15" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg>';
 const X_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const PHOTO_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.7"/><path d="M21 15.5l-4.5-4.5-7 7"/></svg>';
-const SHUFFLE_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M16 3h5v5M21 3l-7.5 7.5M8 21H3v-5M3 21l7.5-7.5M16 21h5v-5M21 21l-5-5M3 3l5 5"/></svg>';
 
 /* 手机上传图片 → 压缩为 JPEG dataURL（长边≤1440，质量0.85，IndexedDB 友好） */
 function compressImageFile(file, maxEdge = 1440, quality = 0.85) {
@@ -132,8 +131,6 @@ export default {
               <div class="row" id="wp-photo"><div class="row-icon" style="background:var(--accent)">${PHOTO_SVG}</div>
                 <div class="row-label">从相册选择壁纸</div>
                 <div class="row-chevron">${CHEV_SVG}</div></div>
-              <div class="row" id="wp-random"><div class="row-icon" style="background:#8E44E5">${SHUFFLE_SVG}</div>
-                <div class="row-label">随机主屏壁纸</div></div>
             </div>
           </div>
 
@@ -158,13 +155,6 @@ export default {
         body.querySelector('#th-prev-lock').onclick = () => openWallSheet('lock');
 
         body.querySelector('#wp-photo').onclick = () => pickPhotoWallpaper();
-        body.querySelector('#wp-random').onclick = async () => {
-          const p = Wallpapers.presets[Math.floor(Math.random() * Wallpapers.presets.length)];
-          await Settings.set('wallpaperHome', { type: 'preset', id: p.id });
-          await applyWallpaper('home');
-          renderDuo(body);
-          toast('已换壁纸：' + p.name);
-        };
       },
     });
     nav.setRoot(page);
@@ -256,7 +246,7 @@ async function openWallSheet(which) {
           <div class="inset-group-title" style="margin:2px 16px 8px;font-size:12.5px">我的上传 · 永久保存</div>
           <div class="wall-grid">
             ${uploads.map(u => `
-              <div class="wall-cell${cur?.type === 'upload' && cur.id === u.id ? ' on' : ''}" data-up="${escapeAttr(u.id)}" style="background:url("${u.data}") center/cover">
+              <div class="wall-cell${cur?.type === 'upload' && cur.id === u.id ? ' on' : ''}" data-up="${escapeAttr(u.id)}">
                 <span>${escapeHtml(u.name)}</span>
                 <button class="wall-del" data-del="${escapeAttr(u.id)}" aria-label="删除壁纸">${X_SVG}</button>
               </div>`).join('')}
@@ -264,7 +254,7 @@ async function openWallSheet(which) {
         <div class="inset-group-title" style="margin:2px 16px 8px;font-size:12.5px">精选壁纸</div>
         <div class="wall-grid">
           ${Wallpapers.presets.map(w => `
-            <div class="wall-cell${cur?.type === 'preset' && cur.id === w.id ? ' on' : ''}" data-preset="${escapeAttr(w.id)}" style="background:url("${w.css}") center/cover">
+            <div class="wall-cell${cur?.type === 'preset' && cur.id === w.id ? ' on' : ''}" data-preset="${escapeAttr(w.id)}">
               <span>${w.name}</span>
             </div>`).join('')}
         </div>
@@ -278,6 +268,16 @@ async function openWallSheet(which) {
               <div class="row-chevron">${CHEV_SVG}</div></div>
           </div>
         </div>`;
+
+      /* 修复：壁纸缩略图背景改由 JS 写入 ——
+         之前用内联 style="background:url(\"data:...\")"，双引号嵌套截断 HTML 属性导致壁纸不显示 */
+      body.querySelectorAll('[data-preset]').forEach(c => {
+        c.style.background = `url("${Wallpapers.preset(c.dataset.preset).css}") center/cover no-repeat`;
+      });
+      body.querySelectorAll('[data-up]').forEach(c => {
+        const u = uploads.find(x => x.id === c.dataset.up);
+        if (u) c.style.background = `url("${u.data}") center/cover no-repeat`;
+      });
 
       body.querySelectorAll('[data-preset]').forEach(c => {
         c.onclick = () => apply({ type: 'preset', id: c.dataset.preset });
