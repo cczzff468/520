@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>AppleAI Web — 仿iOS AI聊天系统</title>
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/phone.css">
+<link rel="stylesheet" href="css/apps.css">
+<link rel="stylesheet" href="css/modules/wechat.css">
+<link rel="stylesheet" href="css/modules/photos.css">
+<link rel="stylesheet" href="css/modules/camera.css">
+<link rel="stylesheet" href="css/modules/music.css">
+<link rel="stylesheet" href="css/modules/weather.css">
+<link rel="stylesheet" href="css/modules/calculator.css">
+<link rel="stylesheet" href="css/modules/recorder.css">
+<link rel="stylesheet" href="css/modules/clock.css">
+<link rel="stylesheet" href="css/modules/notes.css">
+<link rel="stylesheet" href="css/modules/calendar.css">
+<link rel="stylesheet" href="css/modules/browser.css">
+<link rel="stylesheet" href="css/modules/settings.css">
+<link rel="stylesheet" href="css/modules/misc.css">
+</head>
+<body>
+<div id="stage">
+  <div id="phone">
+    <div id="screen">
+      <!-- 主屏幕壁纸 -->
+      <div id="wallpaper-home"></div>
+      <!-- 主屏幕 -->
+      <div id="home"></div>
+      <!-- 应用窗口层 -->
+      <div id="app-layer"></div>
+      <!-- 锁屏 -->
+      <div id="lock"></div>
+      <!-- 控制中心 -->
+      <div id="control-center"></div>
+      <!-- 动态岛 -->
+      <div id="island"></div>
+      <!-- 状态栏 -->
+      <div id="statusbar">
+        <div class="sb-time num" id="sb-time">9:41</div>
+        <div class="sb-right">
+          <div class="sb-signal"><i></i><i></i><i></i><i></i></div>
+          <svg class="sb-wifi" viewBox="0 0 14.6 10.7" width="16.6" height="12.2" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4.97 6.95A3.3 3.3 0 0 1 9.63 6.95"/><path d="M3.17 5.15A5.85 5.85 0 0 1 11.43 5.15"/><path d="M1.36 3.34A8.4 8.4 0 0 1 13.24 3.34"/></g><circle cx="7.3" cy="9.28" r="1.42" fill="currentColor"/></svg>
+          <div class="sb-batt-wrap">
+            <span class="sb-batt-num" id="sb-batt-num">100</span>
+            <div class="sb-batt" id="sb-batt">
+              <div class="sb-batt-fill" id="sb-batt-fill"></div>
+              <svg class="sb-batt-bolt" id="sb-batt-bolt" viewBox="0 0 12 16"><path d="M7.4 1 2 9h3.4L5.8 15 11 7H7.6z" fill="currentColor"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Home指示条 -->
+      <div id="home-bar"></div>
+      <!-- 全局弹层 -->
+      <div id="layer-toast"></div>
+      <div id="layer-sheet"></div>
+      <!-- 全局音频（音乐引擎） -->
+      <audio id="global-audio" preload="metadata"></audio>
+    </div>
+  </div>
+</div>
+<script>
+/* 启动错误捕获（仅控制台输出） */
+window.addEventListener('error', function (e) { console.error('MODULE_ERR', e.message, e.filename, e.lineno); });
+window.addEventListener('unhandledrejection', function (e) { console.error('MODULE_REJ', e.reason); });
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

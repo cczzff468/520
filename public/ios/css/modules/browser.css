@@ -1,0 +1,234 @@
+/* ============ 浏览器（iOS Safari 风格 + 顶部多标签页） ============ */
+
+/* ---------- 顶部标签栏 ---------- */
+.br-shell{ overflow:hidden; }
+
+.br-tabs{
+  flex:none;
+  display:flex; align-items:center; gap:7px;
+  padding:var(--sb-h) 12px 7px;
+  background:var(--nav-bg);
+  backdrop-filter:var(--blur-heavy);
+  -webkit-backdrop-filter:var(--blur-heavy);
+  border-bottom:.5px solid var(--sep);
+  overflow-x:auto;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.br-tabs::-webkit-scrollbar{ display:none; }
+
+.br-tab{
+  flex:none;
+  display:flex; align-items:center; gap:7px;
+  max-width:158px;
+  height:34px;
+  padding:0 6px 0 5px;
+  border-radius:10px;
+  background:var(--fill);
+  border:1px solid transparent;
+  color:var(--text);
+  font-size:13px; font-weight:500;
+  cursor:pointer;
+  transition:background .18s ease, border-color .18s ease, transform .15s var(--ease-ios);
+}
+.br-tab:active{ transform:scale(.94); }
+.br-tab.on{
+  background:var(--card);
+  border-color:color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:0 2px 8px rgba(10,132,255,.14);
+  font-weight:600;
+}
+.br-tab-ico{
+  width:22px; height:22px; flex:none;
+  border-radius:6.5px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--tc);
+  color:#fff;
+  font-size:11.5px; font-weight:700;
+}
+.br-tab-label{
+  flex:1; min-width:20px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.br-tab-x{
+  flex:none;
+  width:20px; height:20px;
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text-3);
+  background:transparent;
+  transition:background .15s ease, color .15s ease;
+}
+.br-tab-x:hover{ background:var(--fill-2); color:var(--text); }
+.br-tab-x svg{ width:10px; height:10px; }
+
+.br-tab-add{
+  flex:none;
+  width:34px; height:34px;
+  border-radius:10px;
+  background:rgba(10,132,255,.12);
+  color:var(--accent);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  transition:transform .15s var(--ease-ios), background .15s ease;
+}
+.br-tab-add:active{ transform:scale(.88); background:rgba(10,132,255,.2); }
+
+/* ---------- 内容宿主 ---------- */
+.br-content{
+  flex:1; position:relative;
+  min-height:0;
+  overflow:hidden;
+  display:flex; flex-direction:column;
+}
+
+/* ---------- 起始页 ---------- */
+.br-start{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:30px;
+  background:
+    radial-gradient(140% 60% at 50% -8%, color-mix(in srgb, var(--accent) 7%, transparent) 0%, transparent 60%),
+    var(--bg);
+}
+
+/* 搜索胶囊（居中大号毛玻璃） */
+.br-hero{ padding:18px 30px 4px; }
+.br-searchbar{
+  display:flex; align-items:center; gap:9px;
+  background:var(--fill);
+  border-radius:13px;
+  padding:12.5px 15px;
+  box-shadow:inset 0 0 0 .5px var(--sep);
+  transition:box-shadow .25s ease;
+}
+.br-searchbar:focus-within{
+  box-shadow:inset 0 0 0 .5px var(--sep), 0 4px 14px rgba(10,132,255,.16);
+}
+.br-searchbar svg{ color:var(--text-2); flex:none; }
+.br-searchbar input{ flex:1; font-size:16.5px; min-width:0; }
+.br-searchbar input::placeholder{ color:var(--text-2); }
+
+/* 快捷方式瓷片（白底 + 品牌图形） */
+.br-quick{
+  display:grid; grid-template-columns:repeat(4, 1fr);
+  gap:18px 8px;
+  padding:18px 26px 22px;
+}
+.br-ql{
+  display:flex; flex-direction:column; align-items:center; gap:7px;
+  font-size:11.5px; color:var(--text);
+}
+.br-ql-icon{
+  width:57px; height:57px;
+  border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--card);
+  box-shadow:var(--shadow-card), inset 0 0 0 .5px var(--sep);
+  transition:transform .18s var(--ease-ios);
+  overflow:hidden;
+}
+.br-ql-icon svg{ width:32px; height:32px; display:block; }
+.br-ql-icon span{
+  font-size:24px; font-weight:700;
+  line-height:1;
+}
+.br-ql:active .br-ql-icon{ transform:scale(.88); }
+.br-ql:active{ opacity:.8; }
+
+/* 区块 */
+.br-sec{ margin:0 16px 20px; }
+.br-sec-title{
+  padding:0 4px 8px;
+  font-size:20px; font-weight:700;
+  color:var(--text);
+  letter-spacing:-.3px;
+}
+.br-empty{
+  justify-content:center;
+  color:var(--text-3); font-size:13.5px;
+  min-height:52px;
+}
+
+/* ---------- 网页视图（每标签一份） ---------- */
+.br-web{
+  position:absolute; inset:0;
+  display:flex; flex-direction:column;
+  background:#fff;
+  animation:brWebIn .3s var(--ease-ios) both;
+}
+html[data-theme="dark"] .br-web{ background:#1c1c1e; }
+@keyframes brWebIn{ from{ opacity:0; transform:scale(.985);} to{ opacity:1; transform:none;} }
+
+/* 内嵌提示条（玻璃胶囊） */
+.br-notice{
+  flex:none;
+  display:flex; align-items:center; gap:8px;
+  background:rgba(28,28,30,.88);
+  backdrop-filter:blur(16px) saturate(150%);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);
+  color:rgba(255,255,255,.92);
+  font-size:11.5px;
+  padding:6px 10px 6px 14px;
+  transition:height .3s, padding .3s, opacity .3s;
+  overflow:hidden;
+}
+.br-notice.min{ height:0; padding:0 10px 0 14px; opacity:0; }
+.br-notice span{ flex:1; }
+.br-notice button{
+  flex:none;
+  background:rgba(255,255,255,.2);
+  border-radius:9px;
+  padding:4.5px 9px;
+  font-size:11.5px;
+  color:#fff;
+  font-weight:600;
+}
+.br-notice .br-notice-x{
+  background:none;
+  padding:4.5px 6px;
+  opacity:.7;
+  font-size:12px;
+}
+
+/* 加载进度条 */
+.br-progress{
+  position:relative;
+  height:2.5px;
+  background:transparent;
+  opacity:0;
+  transition:opacity .3s ease;
+}
+.br-progress.on{ opacity:1; }
+.br-progress i{
+  display:block; height:100%; width:0;
+  background:var(--accent);
+  border-radius:0 2px 2px 0;
+}
+
+.br-frame{
+  flex:1;
+  width:100%;
+  border:none;
+  background:#fff;
+}
+
+/* ---------- 底部工具栏（iOS Safari） ---------- */
+.br-toolbar{
+  flex:none;
+  display:flex; align-items:center; justify-content:space-evenly;
+  padding:9px 18px 20px;
+  background:var(--nav-bg);
+  backdrop-filter:blur(22px) saturate(180%);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  border-top:.5px solid var(--sep);
+}
+.br-toolbar button{
+  width:46px; height:40px;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--accent);
+  border-radius:11px;
+  transition:transform .15s var(--ease-ios), opacity .15s;
+}
+.br-toolbar button:active{ transform:scale(.85); opacity:.55; }

@@ -1,0 +1,129 @@
+/* ============ 相机 ============ */
+
+.cam-stage {
+  position: absolute; inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+.cam-stage video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+.cam-grid {
+  position: absolute; inset: 0;
+  display: none;
+  background:
+    linear-gradient(to right, transparent 33%, rgba(255,255,255,.3) 33%, rgba(255,255,255,.3) calc(33% + 1px), transparent calc(33% + 1px)),
+    linear-gradient(to right, transparent 66%, rgba(255,255,255,.3) 66%, rgba(255,255,255,.3) calc(66% + 1px), transparent calc(66% + 1px)),
+    linear-gradient(to bottom, transparent 33%, rgba(255,255,255,.3) 33%, rgba(255,255,255,.3) calc(33% + 1px), transparent calc(33% + 1px)),
+    linear-gradient(to bottom, transparent 66%, rgba(255,255,255,.3) 66%, rgba(255,255,255,.3) calc(66% + 1px), transparent calc(66% + 1px));
+  pointer-events: none;
+}
+.cam-denied {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #9AA0AA; gap: 10px;
+  padding: 40px; text-align: center;
+}
+.cd-title { color: #E8EAED; font-size: 18px; font-weight: 600; margin-top: 8px; }
+.cd-desc { font-size: 13.5px; line-height: 1.6; }
+
+.cam-topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: calc(var(--sb-h) + 8px) 24px 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  color: #fff;
+  z-index: 6;
+  background: linear-gradient(rgba(0,0,0,.5), transparent);
+}
+.cam-tb-left {
+  display: flex; align-items: center; gap: 12px;
+}
+.cam-tb-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(40,40,44,.55);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+.cam-tb-btn.on { background: #FFD335; color: #000; }
+.cam-mode-label {
+  font-size: 15px; font-weight: 600;
+  color: #F7C948;
+  letter-spacing: 2px;
+}
+
+.cam-bottom {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 18px 34px calc(38px + 16px);
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 6;
+  background: linear-gradient(transparent, rgba(0,0,0,.62));
+}
+.cam-shutter {
+  width: 74px; height: 74px;
+  border-radius: 50%;
+  border: 4.5px solid #fff;
+  padding: 3px;
+}
+.cam-shutter-inner {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .18s var(--ease-spring), background-color .2s;
+}
+.cam-shutter:active .cam-shutter-inner { transform: scale(.85); background: rgba(255,255,255,.6); }
+.cam-thumb {
+  width: 48px; height: 48px;
+  border-radius: 9px;
+  border: 1.5px solid rgba(255,255,255,.8);
+  background: rgba(60,60,64,.5) center/cover no-repeat;
+  backdrop-filter: blur(4px);
+}
+.cam-flip {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: rgba(60,60,64,.65);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.cam-flip:active { transform: scale(.9); }
+
+.cam-filter-bar {
+  position: absolute; bottom: 128px; left: 0; right: 0;
+  display: flex; justify-content: center; gap: 14px;
+  z-index: 7;
+  overflow-x: auto;
+  padding: 0 16px;
+}
+.cam-filter-bar button {
+  flex: none;
+  color: rgba(255,255,255,.75);
+  font-size: 13px; font-weight: 500;
+  padding: 6px 2px;
+  border-bottom: 2.5px solid transparent;
+}
+.cam-filter-bar button.on { color: #F7C948; border-color: #F7C948; }
+
+/* 拍照预览 */
+.cam-preview {
+  position: absolute; inset: 0; z-index: 20;
+  background: #000;
+  animation: fadeIn .2s ease both;
+}
+.cam-preview img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+}
+.cam-pv-top {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: calc(var(--sb-h) + 8px) 20px 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  color: #fff;
+  z-index: 5;
+  background: linear-gradient(rgba(0,0,0,.5), transparent);
+}
+.cam-pv-top button { color: #fff; font-size: 16px; padding: 6px 8px; }
+.cam-pv-top .cp-done { font-weight: 600; color: #F7C948; }
+.cam-preview .cam-filter-bar { bottom: 46px; }

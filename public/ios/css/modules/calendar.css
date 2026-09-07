@@ -1,0 +1,148 @@
+/* ============ 日历 ============ */
+
+.cal-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 16px 2px;
+}
+.cal-month { font-size: 21px; font-weight: 700; letter-spacing: -.4px; }
+.cal-nav {
+  width: 36px; height: 34px;
+  font-size: 19px;
+  color: var(--accent);
+  border-radius: 8px;
+}
+.cal-nav:active { background: var(--fill); }
+
+.cal-week-head {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  padding: 4px 8px 6px;
+}
+.cal-week-head span {
+  text-align: center; font-size: 12px; font-weight: 600;
+  color: var(--text-2);
+}
+.cal-week-head .wknd { color: var(--danger); opacity: .75; }
+
+.cal-cells {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 2px; padding: 0 8px;
+}
+.cal-cell {
+  aspect-ratio: 0.86;
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 5px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.cal-cell:active { background: var(--fill); }
+.cal-cell.sel { background: var(--fill-2); }
+.cal-cell.dim .cc-day { opacity: .3; }
+.cc-day { font-size: 16.5px; font-weight: 500; width: 27px; height: 27px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+.cc-day.today { background: var(--danger); color: #fff; font-weight: 600; }
+.cc-day.wknd { color: var(--danger); }
+.cc-day.wknd.today { color: #fff; }
+.cc-dots { display: flex; gap: 3px; margin-top: 3px; height: 4px; }
+.cc-dots i { width: 4px; height: 4px; border-radius: 50%; }
+
+.cal-day-list { padding-top: 8px; }
+.ev-row { padding: 10px 14px; position: relative; }
+.ev-bar {
+  position: absolute; left: 0; top: 10px; bottom: 10px;
+  width: 4px; border-radius: 2px;
+}
+
+/* 周视图 */
+.cal-week {
+  display: flex;
+  height: calc(100vh - 320px);
+  min-height: 420px;
+}
+.cw-hours {
+  width: 52px; flex: none;
+  position: relative;
+}
+.cw-hour {
+  height: 42px;
+  border-top: .5px solid var(--sep);
+  position: relative;
+}
+.cw-hour span {
+  position: absolute; top: -8px; left: 4px;
+  font-size: 10px; color: var(--text-3);
+}
+.cw-days { flex: 1; display: flex; overflow-x: auto; }
+.cw-day {
+  flex: 1; min-width: 52px;
+  border-left: .5px solid var(--sep);
+  display: flex; flex-direction: column;
+}
+.cwd-head {
+  padding: 4px 2px 8px;
+  text-align: center;
+  position: sticky; top: 0;
+  background: var(--bg);
+  z-index: 2;
+}
+.cwd-head span { display: block; font-size: 10px; color: var(--text-2); }
+.cwd-head b { font-size: 16px; font-weight: 600; }
+.cwd-head.today b {
+  background: var(--danger); color: #fff;
+  border-radius: 50%; width: 24px; height: 24px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.cwd-events { position: relative; }
+.cwd-ev {
+  position: absolute; left: 3px; right: 3px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 10.5px; font-weight: 600;
+  padding: 3px 5px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,.18);
+}
+
+/* 日视图时间轴 */
+.cal-day-timeline {
+  position: relative;
+  height: 1152px; /* 24h * 48px */
+}
+.cdt-hour {
+  height: 48px;
+  border-top: .5px solid var(--sep);
+  position: relative;
+}
+.cdt-hour span {
+  position: absolute; top: -8px; left: 10px;
+  font-size: 11px; color: var(--text-3);
+}
+.cdt-ev {
+  position: absolute; left: 64px; right: 14px;
+  border-radius: 10px;
+  color: #fff;
+  padding: 6px 10px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  display: flex; flex-direction: column; justify-content: flex-start;
+  gap: 2px;
+}
+.cdt-ev div:first-child { font-size: 14px; font-weight: 600; }
+.cdt-ev div:last-child { font-size: 11px; opacity: .85; }
+.cdt-now {
+  position: absolute; left: 6px; right: 10px; height: 0;
+  z-index: 3;
+}
+.cdt-now i {
+  position: absolute; left: 0; top: -4px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--danger);
+}
+.cdt-now::after {
+  content: ''; position: absolute; left: 8px; right: 0; top: 0;
+  height: 2px; background: var(--danger);
+}
+.cdt-now span {
+  position: absolute; right: 2px; top: -18px;
+  font-size: 11px; color: var(--danger); font-weight: 600;
+}

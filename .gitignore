@@ -1,0 +1,70 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+local-*
+.claude
+.z-ai-config
+*.log
+dev.log
+dev.out.log
+test
+prompt
+
+server.log
+# Skills directory
+/skills/
+
+# ===== 本项目专有排除（隐私 / 内部工件）=====
+# 本地 SQLite 数据库（含用户数据）
+/db/
+# 界面验证截图（内部工件）
+/download/
+# 用户上传的个人图片（隐私）
+/upload/
+# 内部工具产物与开发过程文件
+/tool-results/
+/.zscripts/
+/scripts/
+/agent-ctx/
+/worklog.md
+.claude
+.z-ai-config

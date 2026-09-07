@@ -1,0 +1,91 @@
+/* ============ 计算器 ============ */
+
+.calc-root {
+  position: absolute; inset: 0;
+  background: #000;
+  display: flex; flex-direction: column;
+  padding: var(--sb-h) 12px calc(14px + 20px);
+}
+.calc-root.sci { padding: var(--sb-h) 10px 10px; }
+
+.calc-display {
+  flex: 1;
+  display: flex; flex-direction: column;
+  justify-content: flex-end; align-items: flex-end;
+  padding: 0 16px 14px;
+  min-height: 90px;
+}
+.calc-expr {
+  color: rgba(255,255,255,.4);
+  font-size: 22px; font-weight: 400;
+  min-height: 26px;
+  max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  direction: rtl; text-align: right;
+}
+.calc-num {
+  color: #fff;
+  font-size: 76px; font-weight: 250;
+  letter-spacing: -1.5px;
+  max-width: 100%;
+  line-height: 1.1;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+.calc-std-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 11px;
+  flex: none;
+}
+.calc-sci-rows {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 7px;
+  flex: none;
+  margin-bottom: 11px;
+}
+
+.calc-key {
+  border-radius: 50%;
+  aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 27px; font-weight: 400;
+  color: #fff;
+  background: var(--key-light);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: transform .32s var(--ease-spring), opacity .1s, filter .1s;
+}
+.calc-key.zero { grid-column: span 2; aspect-ratio: auto; border-radius: 28px; text-align: left; padding-left: 30px; }
+.calc-key.util { background: var(--key-light); color: #000; font-size: 24px; }
+.calc-key.num { background: var(--key-dark); }
+.calc-key.op { background: var(--key-accent); font-size: 31px; }
+.calc-key.op.active { background: #fff; color: var(--key-accent); }
+.calc-key.fn { background: rgba(120,120,128,.3); font-size: 15.5px; border-radius: 12px; aspect-ratio: 1.6; }
+.calc-key.eq { font-size: 33px; }
+
+.calc-key.pressed {
+  transform: scale(.9);
+  filter: brightness(1.4);
+  transition: transform .06s ease-out, filter .06s;
+}
+.calc-key.util.pressed { filter: brightness(1.15); }
+
+.calc-mode-toggle {
+  margin-top: 12px;
+  color: rgba(255,255,255,.55);
+  font-size: 13px;
+  padding: 8px;
+  align-self: center;
+}
+
+/* 科学计算器（横屏/紧凑） */
+.calc-root.sci .calc-key { font-size: 22px; }
+.calc-root.sci .calc-std-grid { gap: 8px; }
+.calc-root.sci .calc-display { min-height: 60px; }
+.calc-root.sci .calc-num { font-size: 48px; }
+.calc-root.sci .calc-mode-toggle { display: none; }

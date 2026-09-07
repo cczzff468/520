@@ -1,0 +1,305 @@
+/* ============ 时钟 ============ */
+
+/* ---------- 世界地图点阵（晨昏线 + 标记） ---------- */
+.world-map {
+  display: grid;
+  grid-template-columns: repeat(48, 1fr);
+  grid-template-rows: repeat(24, 4.6px);
+  gap: 1px;
+  background:
+    radial-gradient(120% 160% at 30% 20%, #16304F 0%, #0C1B32 55%, #081426 100%);
+  border-radius: 18px;
+  padding: 12px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 6px 18px rgba(10,30,60,.35),
+    inset 0 0 0 .5px rgba(255,255,255,.07);
+}
+.world-map i {
+  border-radius: 50%;
+  width: 100%; height: 100%;
+}
+/* 城市标记：预设蓝 / 自定义橙 */
+.wm-city{
+  background:#0A84FF !important;
+  box-shadow:0 0 6px rgba(10,132,255,.95);
+  animation:wmPulse 2.4s infinite;
+}
+.wm-city.custom{
+  background:#FF9500 !important;
+  box-shadow:0 0 6px rgba(255,149,0,.95);
+}
+@keyframes wmPulse{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.35)} }
+/* 太阳直射点：暖色光晕 */
+.wm-sun{
+  background:#FFD60A !important;
+  border-radius:50% !important;
+  box-shadow:
+    0 0 4px #FFD60A,
+    0 0 12px rgba(255,214,10,.8),
+    0 0 22px rgba(255,149,0,.45);
+  animation:wmPulse 3s infinite;
+}
+/* 月亮（对跖点）：冷色光晕 */
+.wm-moon{
+  background:#E8EAF6 !important;
+  border-radius:50% !important;
+  box-shadow:
+    0 0 4px #C7C9FF,
+    0 0 12px rgba(199,201,255,.7);
+}
+/* 地图图例 */
+.wm-legend{
+  display:flex; align-items:center; gap:14px;
+  padding:2px 6px 12px;
+  font-size:11.5px; color:var(--text-3);
+}
+.wm-legend span{ display:flex; align-items:center; gap:5px; }
+.wm-legend .dot{
+  width:7px; height:7px; border-radius:50%;
+  display:inline-block;
+}
+.wm-legend .dot.city{ background:#0A84FF; box-shadow:0 0 4px rgba(10,132,255,.8); }
+.wm-legend .dot.custom{ background:#FF9500; box-shadow:0 0 4px rgba(255,149,0,.8); }
+.wm-legend .sunmoon{ margin-left:auto; gap:8px; }
+.wm-legend .sun{ width:9px; height:9px; border-radius:50%; background:#FFD60A; box-shadow:0 0 5px #FFD60A; margin-left:4px; }
+.wm-legend .moon{ width:8px; height:8px; border-radius:50%; background:#C7C9FF; box-shadow:0 0 5px #C7C9FF; margin-left:4px; }
+
+/* ---------- 城市行（iOS 世界时钟风格） ---------- */
+.wc-row{ padding:12px 16px; min-height:60px; }
+.wc-chip{
+  width:30px; height:30px; border-radius:9px; flex:none;
+  display:flex; align-items:center; justify-content:center;
+}
+.wc-chip.sun{
+  background:linear-gradient(160deg, rgba(255,214,10,.28), rgba(255,149,0,.18));
+  box-shadow:inset 0 0 0 .5px rgba(255,149,0,.25);
+}
+.wc-chip.moon{
+  background:linear-gradient(160deg, rgba(199,201,255,.3), rgba(94,92,230,.2));
+  box-shadow:inset 0 0 0 .5px rgba(94,92,230,.3);
+}
+.wc-name{
+  font-size:16.5px; font-weight:600; color:var(--text);
+  display:flex; align-items:center; gap:6px;
+}
+.wc-custom-tag{
+  font-size:9.5px; font-weight:600; color:#FF9500;
+  background:rgba(255,149,0,.13);
+  border:.5px solid rgba(255,149,0,.35);
+  padding:1px 5px; border-radius:5px;
+}
+.wc-sub{
+  font-size:12.5px; color:var(--text-2); margin-top:2.5px;
+}
+.wc-time{
+  font-size:42px; font-weight:250; letter-spacing:-1px;
+  font-variant-numeric:tabular-nums;
+  color:var(--text);
+  margin-left:auto; flex:none;
+}
+
+/* ---------- 添加城市 Sheet ---------- */
+.wc-pick-list{
+  max-height:330px; overflow-y:auto;
+  background:var(--card);
+  border-radius:12px;
+  -webkit-overflow-scrolling:touch;
+  margin-bottom:10px;
+}
+.wc-pick{
+  display:flex; align-items:center; gap:10px;
+  padding:11px 14px;
+  cursor:pointer;
+  border-bottom:.5px solid var(--sep);
+  position:relative;
+}
+.wc-pick:last-child{ border-bottom:none; }
+.wc-pick:active{ background:var(--fill); }
+.wc-pick.added{ opacity:.45; pointer-events:none; }
+.wc-pick-name{ flex:1; font-size:15.5px; color:var(--text); }
+/* 省份/国家小标签（搜索与分区视图） */
+.wc-pick-prov{
+  font-size:11.5px; font-weight:500;
+  color:var(--text-2);
+  background:var(--fill-2);
+  padding:2px 8px;
+  border-radius:5px;
+  margin-left:8px;
+  vertical-align:1.5px;
+}
+/* 地区分区标题（无搜索词时） */
+.wc-region-title{
+  position:sticky; top:0; z-index:2;
+  padding:7px 14px 5px;
+  font-size:12px; font-weight:600;
+  color:var(--text-2);
+  letter-spacing:.5px;
+  background:color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  border-bottom:.5px solid var(--sep);
+}
+.wc-region-title + .wc-pick{ border-top:none; }
+.wc-pick-time{
+  font-size:15px; color:var(--text-2);
+  font-variant-numeric:tabular-nums;
+}
+.wc-added-tag{
+  font-size:10.5px; color:var(--text-3);
+  background:var(--fill);
+  padding:2px 7px; border-radius:6px;
+}
+.wc-pick-empty{
+  padding:34px 16px; text-align:center;
+  color:var(--text-3); font-size:13.5px;
+}
+.wc-custom-row{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:13px;
+  border-radius:12px;
+  background:rgba(10,132,255,.08);
+  border:.5px dashed rgba(10,132,255,.4);
+  color:var(--accent);
+  font-size:14.5px; font-weight:500;
+  cursor:pointer;
+}
+.wc-custom-row:active{ background:rgba(10,132,255,.16); }
+
+/* 闹钟 */
+.alarm-time-input {
+  background: var(--fill);
+  border-radius: 12px;
+  padding: 8px;
+}
+.alarm-time-input input[type=time] {
+  width: 100%;
+  font-size: 34px;
+  text-align: center;
+  color: var(--text);
+  background: none;
+  font-variant-numeric: tabular-nums;
+}
+.week-picker {
+  display: flex; justify-content: space-between; gap: 6px;
+  padding-bottom: 6px;
+}
+.week-picker button {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--text);
+  font-size: 14px;
+}
+.week-picker button.on { background: var(--accent); color: #fff; }
+
+/* 秒表 */
+.sw-body { display: flex; flex-direction: column; align-items: stretch; padding: 20px 24px; }
+.sw-display {
+  text-align: center;
+  font-size: 68px; font-weight: 250;
+  letter-spacing: -2px;
+  padding: 46px 0 30px;
+  font-variant-numeric: tabular-nums;
+}
+.sw-controls {
+  display: flex; justify-content: space-between;
+  padding: 10px 26px 26px;
+}
+.sw-btn {
+  width: 84px; height: 84px;
+  border-radius: 50%;
+  background: var(--fill-2);
+  font-size: 17px;
+  color: var(--text);
+}
+.sw-btn.main {
+  background: var(--success);
+  color: #fff;
+  font-size: 19px;
+}
+.sw-btn.main.running { background: var(--danger); }
+.sw-btn:active { transform: scale(.93); filter: brightness(1.2); }
+.sw-laps { }
+.sw-lap {
+  display: flex; justify-content: space-between;
+  padding: 12px 8px;
+  border-bottom: .5px solid var(--sep);
+  font-size: 15px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.sw-lap span:nth-child(1) { color: var(--text); }
+
+/* 计时器 */
+.tm-body { display: flex; flex-direction: column; align-items: center; padding: 16px 24px; }
+.tm-ring-wrap { position: relative; width: 250px; height: 250px; margin-top: 18px; }
+.tm-ring { width: 100%; height: 100%; }
+.tm-ring #tm-progress { transition: stroke-dashoffset .2s linear; }
+.tm-display {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+}
+.tm-display .num { font-size: 54px; font-weight: 250; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
+.tm-presets {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 9px;
+  margin-top: 26px;
+}
+.tm-presets button {
+  padding: 9px 16px;
+  border-radius: 18px;
+  background: var(--fill);
+  font-size: 14px;
+  color: var(--text);
+}
+.tm-presets button.on { background: var(--accent); color: #fff; }
+.tm-ctl { width: 100%; padding: 26px 0 0; justify-content: space-evenly; }
+
+/* ============ 时长滚轮选择器（仿 iOS UIDatePicker） ============ */
+.wheel{
+  position:relative;
+  display:flex; justify-content:center; gap:2px;
+  overflow:hidden;
+  margin:6px 0 2px;
+}
+.wheel-band{
+  position:absolute; left:-10px; right:-10px;
+  background:var(--fill);
+  border-radius:12px;
+  z-index:0;
+}
+.wheel-colwrap{ position:relative; width:78px; z-index:1; }
+.wheel-col{
+  height:216px; width:100%;
+  overflow-y:scroll;
+  scroll-snap-type:y mandatory;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+.wheel-col::-webkit-scrollbar{ display:none; }
+.wheel-pad{ height:81px; }
+.wheel-item{
+  height:54px; line-height:54px;
+  text-align:center;
+  font-size:21px; font-weight:500;
+  font-variant-numeric:tabular-nums;
+  color:var(--text-2);
+  scroll-snap-align:center;
+  transition:color .15s ease, font-size .15s ease;
+}
+.wheel-item.cur{ color:var(--text); font-size:23px; font-weight:600; }
+.wheel-unit{
+  position:absolute; left:calc(50% + 19px); top:100px;
+  font-size:13px; color:var(--text-2);
+  white-space:nowrap; pointer-events:none;
+}
+.wheel-fade{
+  position:absolute; left:0; right:0; height:64px;
+  z-index:2; pointer-events:none;
+}
+.wheel-fade.top{ top:0; background:linear-gradient(to bottom, var(--bg-flat) 8%, transparent); }
+.wheel-fade.bottom{ bottom:0; background:linear-gradient(to top, var(--bg-flat) 8%, transparent); }
