@@ -1,10 +1,12 @@
-/* ============ 锁屏：大时钟 + 上滑解锁 ============ */
+/* ============ 锁屏（截图样式：左对齐大时钟 + 农历日期 + 明暗自适应） ============ */
 
 import { el, fmtDate, onSwipe, haptic } from './utils.js';
 import { applyWallpaper } from './wallpapers.js';
 import { Bus } from './utils.js';
 import { Statusbar } from './statusbar.js';
+import { Settings } from './db.js';
 import { toggleTorch } from './island.js';
+import { lunarText } from './lunar.js';
 
 export const Lock = {
   init() {
@@ -12,17 +14,14 @@ export const Lock = {
     lock.innerHTML = `
       <div class="lock-wallpaper"></div>
       <div class="lock-inner">
-        <svg class="lock-lock-icon" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
-        <div class="lock-time num" id="lock-time">9:41</div>
-        <div class="lock-date" id="lock-date">—</div>
-        <div class="lock-hint">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-          <span>上滑解锁</span>
+        <div class="lock-clock-block" id="lock-clock-block">
+          <div class="lock-date" id="lock-date">—</div>
+          <div class="lock-time num" id="lock-time">9:41</div>
         </div>
       </div>
       <div class="lock-quick">
-        <button id="lock-torch"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2.5h8v3l-2 3v13h-4v-13l-2-3zM10 9.5h4M10 13h4M10 16.5h4"/></svg></button>
-        <button id="lock-cam"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l2-3h6l2 3h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
+        <button id="lock-torch" aria-label="手电筒"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 2.5h8v3l-2 3v13h-4v-13l-2-3zM10 9.5h4M10 13h4M10 16.5h4"/></svg></button>
+        <button id="lock-cam" aria-label="相机"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l2-3h6l2 3h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
       </div>`;
     this._el = lock;
     this._timeNode = lock.querySelector('#lock-time');
@@ -31,8 +30,11 @@ export const Lock = {
     this.render();
     this._timer = setInterval(() => this.render(), 1000);
 
+    /* 上滑解锁（触摸/鼠标双通道，touch-action:none 保证移动端不被滚动接管） */
     onSwipe(lock, { up: () => this.unlock() });
-    lock.querySelector('.lock-hint').addEventListener('click', () => this.unlock());
+    /* 时钟区域点击也可解锁（备用入口） */
+    lock.querySelector('#lock-clock-block').addEventListener('click', () => this.unlock());
+
     lock.querySelector('#lock-cam').addEventListener('click', () => {
       this.unlock();
       import('./applayer.js').then(m => m.openApp('camera'));
@@ -40,6 +42,18 @@ export const Lock = {
     lock.querySelector('#lock-torch').addEventListener('click', () => {
       haptic();
       toggleTorch();
+    });
+
+    /* 明暗自适应：默认纯白壁纸 → 深色文字（截图样式）；
+       自定义亮/暗壁纸由状态栏采样事件驱动切换 */
+    (async () => {
+      const wp = await Settings.load('wallpaperLock', null);
+      if (!wp || (wp.type === 'preset' && (wp.id === 'snow' || wp.id === 'mint' || wp.id === 'peach'))) {
+        lock.classList.add('light-ui');
+      }
+    })();
+    Bus.on('sb:style', ({ style }) => {
+      lock.classList.toggle('light-ui', style === 'light');
     });
 
     applyWallpaper('lock');
@@ -52,17 +66,21 @@ export const Lock = {
   render() {
     const d = new Date();
     this._timeNode.textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-    const wd = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'][d.getDay()];
-    this._dateNode.textContent = `${d.getMonth() + 1}月${d.getDate()}日 ${wd}`;
+    const wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()];
+    let dateLine = `${d.getMonth() + 1}月${d.getDate()}日${wd}`;
+    const lt = lunarText(d);
+    if (lt) dateLine += ` · ${lt}`;
+    this._dateNode.textContent = dateLine;
   },
 
   show() {
     this._el.classList.add('show');
     Statusbar.setStyle('dark'); // 过渡色
-    Statusbar.auto(null, 60);  // 自动采样锁屏壁纸：浅色壁纸 → 黑字
+    Statusbar.auto(null, 60);  // 自动采样锁屏壁纸：浅色壁纸 → 黑字 + 锁屏浅色UI
   },
   unlock() {
     if (!this._el.classList.contains('show')) return;
+    haptic(6);
     this._el.style.transition = 'transform .45s cubic-bezier(.32,.72,0,1), opacity .45s ease';
     this._el.style.transform = 'translateY(-100%)';
     this._el.style.opacity = '0';

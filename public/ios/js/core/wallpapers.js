@@ -31,6 +31,9 @@ export const Wallpapers = {
       </defs>
       <rect width="${800}" height="${1732}" fill="url(#m)"/>
       <rect width="${800}" height="${1732}" fill="url(#m2)"/>`) },
+    { id: 'snow', name: '纯白', css: svgWallpaper(`
+      <defs><rect width="${800}" height="${1732}" fill="#FAFAFA"/></defs>
+      <rect width="${800}" height="${1732}" fill="#FAFAFA"/>`) },
     { id: 'ink', name: '墨色', css: svgWallpaper(`
       <defs><linearGradient id="k" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#232529"/><stop offset="1" stop-color="#0A0A0C"/>
@@ -82,7 +85,7 @@ export async function wallpaperCSS(wp) {
 export async function applyWallpaper(which = 'home') {
   const key = which === 'home' ? 'wallpaperHome' : 'wallpaperLock';
   const wp = await Settings.load(key, null);
-  const style = await wallpaperCSS(wp || (which === 'home' ? { type: 'preset', id: 'aurora' } : { type: 'preset', id: 'ink' }));
+  const style = await wallpaperCSS(wp || (which === 'home' ? { type: 'preset', id: 'aurora' } : { type: 'preset', id: 'snow' }));
   const node = which === 'home' ? document.getElementById('wallpaper-home') : document.querySelector('#lock .lock-wallpaper');
   if (node) {
     node.style.background = style.background;

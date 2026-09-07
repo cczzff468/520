@@ -345,11 +345,12 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   transition:opacity .3s;
 }
 
-/* ---------- 锁屏 ---------- */
+/* ---------- 锁屏（截图样式：左对齐大时钟 + 农历） ---------- */
 #lock{
   position:absolute; inset:0; z-index:800;
-  display:none; flex-direction:column; align-items:center;
+  display:none; flex-direction:column; align-items:stretch;
   color:#fff; overflow:hidden;
+  touch-action:none; /* 上滑解锁手势不被浏览器滚动接管 */
 }
 #lock.show{ display:flex; }
 #lock .lock-wallpaper{
@@ -357,45 +358,58 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   z-index:-1;
 }
 #lock .lock-wallpaper::after{ content:''; position:absolute; inset:0; background:rgba(0,0,0,.25); }
+/* 纯白/浅色壁纸 → 深色文字模式（几乎不压暗） */
+#lock.light-ui .lock-wallpaper::after{ background:rgba(0,0,0,.03); }
+
 .lock-inner{
   width:100%; height:100%;
-  display:flex; flex-direction:column; align-items:center;
-  padding-top:calc(var(--sb-h) + 30px);
+  display:flex; flex-direction:column;
+  padding-top:calc(var(--sb-h) + 44px);
+  position:relative;
 }
-.lock-lock-icon{ opacity:.9; margin-bottom:6px; }
-.lock-time{
-  font-size:82px; font-weight:250;
-  letter-spacing:-2px;
-  text-shadow:0 2px 18px rgba(0,0,0,.25);
-  line-height:1;
-}
+/* 时钟块：整体左对齐，点击可解锁（备用入口） */
+.lock-clock-block{ padding:0 26px; cursor:pointer; }
 .lock-date{
-  font-size:19px; font-weight:600;
-  margin-top:8px;
+  font-size:16.5px; font-weight:500;
+  letter-spacing:.2px;
   text-shadow:0 1px 8px rgba(0,0,0,.3);
 }
-.lock-hint{
-  margin-top:auto; margin-bottom:60px;
-  font-size:14px; font-weight:500;
-  opacity:.85;
-  display:flex; flex-direction:column; align-items:center; gap:8px;
-  animation:lockHint 2.2s ease-in-out infinite;
+#lock.light-ui .lock-date{ color:#3A3A3C; text-shadow:none; }
+.lock-time{
+  font-size:82px; font-weight:700;
+  letter-spacing:-1.5px;
+  line-height:1.02;
+  margin-top:4px;
+  font-variant-numeric:tabular-nums;
+  text-shadow:0 2px 20px rgba(0,0,0,.25);
 }
-@keyframes lockHint{ 0%,100%{transform:translateY(0);opacity:.75} 50%{transform:translateY(-6px);opacity:1} }
+#lock.light-ui .lock-time{ color:#111; text-shadow:none; }
+
 .lock-quick{
-  position:absolute; bottom:64px; left:0; right:0;
+  position:absolute; bottom:44px; left:0; right:0;
   display:flex; justify-content:space-between;
-  padding:0 44px;
+  padding:0 30px;
 }
 .lock-quick button{
-  width:50px; height:50px; border-radius:50%;
-  background:rgba(255,255,255,.18);
+  width:52px; height:52px; border-radius:50%;
+  background:rgba(255,255,255,.16);
   backdrop-filter:var(--blur-lite);
   -webkit-backdrop-filter:var(--blur-lite);
   display:flex; align-items:center; justify-content:center;
   color:#fff;
+  border:none;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.25);
 }
-.lock-quick button:active{ background:rgba(255,255,255,.35); }
+.lock-quick button:active{ background:rgba(255,255,255,.32); }
+/* 浅色模式：浅灰底 + 灰图标（截图样式） */
+#lock.light-ui .lock-quick button{
+  background:#E9E9EE;
+  color:#8E8E93;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.04);
+}
+#lock.light-ui .lock-quick button:active{ background:#DCDCE1; }
 
 /* ---------- 多任务切换器 ---------- */
 #task-switcher{

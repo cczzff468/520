@@ -49,8 +49,8 @@ function compressImageFile(file, maxEdge = 1440, quality = 0.85) {
 async function wallInfo(which) {
   const key = which === 'home' ? 'wallpaperHome' : 'wallpaperLock';
   const wp = await Settings.load(key, null);
-  const style = await wallpaperCSS(wp || (which === 'home' ? { type: 'preset', id: 'aurora' } : { type: 'preset', id: 'ink' }));
-  let name = which === 'home' ? '极光' : '墨色';
+  const style = await wallpaperCSS(wp || (which === 'home' ? { type: 'preset', id: 'aurora' } : { type: 'preset', id: 'snow' }));
+  let name = which === 'home' ? '极光' : '纯白';
   if (wp?.type === 'preset') name = Wallpapers.preset(wp.id).name;
   else if (wp?.type === 'upload') {
     const up = await DB.get('wallpapers', wp.id);
@@ -298,7 +298,7 @@ async function openWallSheet(which) {
           if (!ok) return;
           /* 当前正在使用的壁纸被删 → 回退默认 */
           if (cur?.type === 'upload' && cur.id === id) {
-            await Settings.set(key, { type: 'preset', id: which === 'home' ? 'aurora' : 'ink' });
+            await Settings.set(key, { type: 'preset', id: which === 'home' ? 'aurora' : 'snow' });
             await applyWallpaper(which);
           }
           await DB.del('wallpapers', id);

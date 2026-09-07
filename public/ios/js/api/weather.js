@@ -33,6 +33,8 @@ export const WeatherEngine = {
     let list = await Settings.load('weatherCities', null);
     if (!Array.isArray(list) || !list.length) {
       list = [await this.getCity()];
+      /* 立即固化：避免“列表仅存在于 fallback”导致切换城市后历史城市静默丢失 */
+      await this.saveCities(list);
     }
     return list.filter(c => c && c.city);
   },
@@ -51,6 +53,33 @@ export const WeatherEngine = {
     const list = (await this.getCities()).filter(x => !this._sameCity(x, city));
     await this.saveCities(list);
     return list;
+  },
+
+  /* 单城市实时天气（城市管理卡片用，30 分钟缓存；失败返回 null 卡片降级） */
+  _currentCache: {},
+  async fetchCurrent(city) {
+    const key = city.city + '@' + (city.lat || 0);
+    const c = this._currentCache[key];
+    if (c && Date.now() - c.at < 30 * 60 * 1000) return c.data;
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}` +
+        `&current=temperature_2m,weather_code,is_day` +
+        `&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto`;
+      const res = await fetch(url, { signal: AbortSignal.timeout ? AbortSignal.timeout(9000) : undefined });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const j = await res.json();
+      const data = {
+        temp: j.current?.temperature_2m,
+        code: j.current?.weather_code,
+        isDay: j.current?.is_day === 1,
+        max: j.daily?.temperature_2m_max?.[0],
+        min: j.daily?.temperature_2m_min?.[0],
+      };
+      this._currentCache[key] = { data, at: Date.now() };
+      return data;
+    } catch (e) {
+      return null;
+    }
   },
 
   unit() { return Settings.get('weatherUnit', 'c'); },

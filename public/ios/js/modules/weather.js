@@ -206,31 +206,49 @@ function drawTempLine(svg, temps) {
     <path d="${path}" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".92"/>`;
 }
 
-/* ============ 城市管理：搜索添加 · 点击切换 · 长按删除 ============ */
+/* ============ 城市管理：截图样式（全幅天气背景卡片） ============ */
+
+/* 卡片背景：按天气状况 + 昼夜生成渐变 */
+function cityCardBg(code, isDay) {
+  if (isDay === false) return 'linear-gradient(135deg,#2A3B5E 0%,#141E33 100%)';   // 夜
+  if (code == null) return 'linear-gradient(135deg,#5A8EC8 0%,#9DBBDA 100%)';      // 未知
+  if (code === 0) return 'linear-gradient(135deg,#3E8FE0 0%,#7CC0F0 100%)';        // 晴
+  if (code === 1) return 'linear-gradient(135deg,#5A8EC8 0%,#A4C4E0 100%)';        // 多云
+  if (code === 2) return 'linear-gradient(135deg,#7595B5 0%,#B0C4D8 100%)';        // 局部多云
+  if (code === 3) return 'linear-gradient(135deg,#8E9BAD 0%,#5F6B7C 100%)';        // 阴
+  if (code >= 45 && code <= 48) return 'linear-gradient(135deg,#9AA5B1 0%,#6E7B88 100%)'; // 雾
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'linear-gradient(135deg,#3A5372 0%,#232F42 100%)'; // 雨
+  if (code >= 71 && code <= 77) return 'linear-gradient(135deg,#9FB2C6 0%,#6E86A0 100%)'; // 雪
+  if (code >= 95) return 'linear-gradient(135deg,#3D4557 0%,#1F2532 100%)';        // 雷暴
+  return 'linear-gradient(135deg,#5A8EC8 0%,#A4C4E0 100%)';
+}
+
 function openCityManage() {
   const page = nav.makePage({
     title: '城市管理',
     back: '天气',
+    right: [navBtn('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', () => {
+      const input = root.querySelector('#cm-input');
+      if (input) { input.focus(); }
+    })],
     build(body) {
-      body.classList.add('pad');
       body.innerHTML = `
-        <div class="searchbar">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
-          <input placeholder="搜索城市并添加，如：上海" id="cm-input">
+        <div class="cm-searchbar">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
+          <input placeholder="搜索城市或景区" id="cm-input">
         </div>
         <div id="cm-results"></div>
-        <div class="inset-group-title" style="margin-top:16px">我的城市 · 长按删除</div>
-        <div class="inset-group"><div class="inset-card" id="cm-list"></div></div>
-        <div class="inset-group"><div class="inset-card">
+        <div id="cm-cards"></div>
+        <div class="inset-group" style="margin-top:4px"><div class="inset-card">
           <div class="row" id="cm-locate">
             <div class="row-icon" style="background:var(--accent)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M20.5 10.5c0 6.5-8.5 12-8.5 12s-8.5-5.5-8.5-12a8.5 8.5 0 0 1 17 0z"/><circle cx="12" cy="10.5" r="3"/></svg></div>
             <div class="row-label">使用当前定位</div>
             <div class="row-val">GPS</div>
           </div>
         </div></div>
-        <div class="cm-tip">提示：点击城市切换 · 长按城市 0.5 秒删除</div>`;
+        <div class="cm-tip">点击卡片切换城市 · 长按卡片 0.5 秒删除</div>`;
 
-      renderCityList(body);
+      renderCityCards(body);
 
       /* 搜索添加 */
       const input = body.querySelector('#cm-input');
@@ -285,49 +303,52 @@ function openCityManage() {
   nav.push(page);
 }
 
-async function renderCityList(body) {
-  const listEl = body.querySelector('#cm-list');
-  if (!listEl) return;
+/* 城市天气卡片列表（截图样式） */
+async function renderCityCards(body) {
+  const wrap = body.querySelector('#cm-cards');
+  if (!wrap) return;
   const cities = await WeatherEngine.getCities();
   const cur = await WeatherEngine.getCity();
+  /* 当前城市排最前 */
+  cities.sort((a, b) =>
+    (WeatherEngine._sameCity(b, cur) ? 1 : 0) - (WeatherEngine._sameCity(a, cur) ? 1 : 0));
 
+  wrap.innerHTML = '';
   if (!cities.length) {
-    listEl.innerHTML = `<div class="row static"><div class="row-label" style="color:var(--text-2)">暂无城市，上方搜索添加</div></div>`;
+    wrap.innerHTML = `<div class="empty-state" style="padding:40px 20px"><div class="es-title">暂无城市</div><div>上方搜索添加</div></div>`;
     return;
   }
 
-  listEl.innerHTML = cities.map((c, i) => `
-    <div class="row" data-i="${i}">
-      <div class="row-label">
-        <div style="font-size:16.5px;font-weight:600">${escapeHtml(c.city)}</div>
-        <div style="font-size:12.5px;color:var(--text-2)">${escapeHtml([c.admin, c.country].filter(Boolean).join(' · '))}</div>
+  cities.forEach(c => {
+    const card = el('div', 'cm-card');
+    card.dataset.city = c.city;
+    card.innerHTML = `
+      <div class="cmc-left">
+        <div class="cmc-city">${escapeHtml(c.city)}</div>
+        <div class="cmc-detail">${escapeHtml([c.admin, c.country].filter(Boolean).join(' · '))}</div>
       </div>
-      ${WeatherEngine._sameCity(c, cur) ? '<span class="badge green" style="flex:none">当前</span>' : '<div class="row-val tappable">切换</div>'}
-    </div>`).join('');
-
-  listEl.querySelectorAll('[data-i]').forEach(r => {
-    const c = cities[+r.dataset.i];
-    let t = null;
-    let longFired = false; // 长按已触发 → 抑制随后的 click（避免误触切换）
-    let sx = 0, sy = 0;
+      <div class="cmc-temp num">—</div>`;
+    wrap.appendChild(card);
 
     /* 点击 → 切换城市 */
-    r.onclick = async () => {
-      if (longFired) { longFired = false; return; }
+    card.addEventListener('click', async () => {
+      if (card._longFired) { card._longFired = false; return; }
       if (WeatherEngine._sameCity(c, cur)) return;
       haptic(6);
       await WeatherEngine.setCity(c);
       toast('已切换到 ' + c.city);
       nav.pop();
       renderMain();
-    };
+    });
 
-    /* 长按 0.5 秒 → 删除确认（移动超 12px 视为滚动，取消长按） */
-    r.addEventListener('pointerdown', (e) => {
-      longFired = false;
+    /* 长按 0.5 秒 → 删除确认（移动超 12px 视为滑动，取消） */
+    let t = null;
+    let sx = 0, sy = 0;
+    card.addEventListener('pointerdown', (e) => {
+      card._longFired = false;
       sx = e.clientX; sy = e.clientY;
       t = setTimeout(async () => {
-        longFired = true;
+        card._longFired = true;
         haptic(10);
         const ok = await confirmDialog('删除城市', `将「${c.city}」从城市列表移除？`, { okText: '删除', danger: true });
         if (!ok) return;
@@ -340,19 +361,40 @@ async function renderCityList(body) {
             nav.pop();
           } else {
             toast('至少保留一个城市');
-            renderCityList(body);
+            renderCityCards(body);
             return;
           }
         }
         toast('已删除「' + c.city + '」');
-        renderCityList(body);
+        renderCityCards(body);
       }, 520);
     });
-    r.addEventListener('pointermove', (e) => {
+    card.addEventListener('pointermove', (e) => {
       if (Math.hypot(e.clientX - sx, e.clientY - sy) > 12) clearTimeout(t);
     }, { passive: true });
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev =>
-      r.addEventListener(ev, () => clearTimeout(t), { passive: true }));
-    r.addEventListener('contextmenu', (e) => e.preventDefault());
+      card.addEventListener(ev, () => clearTimeout(t), { passive: true }));
+    card.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    /* 异步填充天气（当前城市优先复用主数据） */
+    fillCardWeather(card, c, cur);
   });
+}
+
+async function fillCardWeather(card, c, cur) {
+  let w = null;
+  if (WeatherEngine._sameCity(c, cur) && WeatherEngine.data) {
+    const d = WeatherEngine.data;
+    w = { temp: d.current.temp, code: d.current.code, isDay: d.current.isDay, max: d.daily[0]?.max, min: d.daily[0]?.min };
+  } else {
+    w = await WeatherEngine.fetchCurrent(c);
+  }
+  if (!w || !card.isConnected) return;
+  const U = (x) => WeatherEngine.toDisplay(x);
+  card.style.background = cityCardBg(w.code, w.isDay);
+  const detail = [];
+  if (w.code != null) detail.push(wText(w.code));
+  if (w.min != null && w.max != null) detail.push(`${U(w.min)}~${U(w.max)}°`);
+  if (detail.length) card.querySelector('.cmc-detail').textContent = detail.join(' ');
+  if (w.temp != null) card.querySelector('.cmc-temp').textContent = U(w.temp) + '°';
 }
