@@ -81,6 +81,7 @@ export const Lock = {
 
   show() {
     this._authed = false; // 每次上锁重置密码门禁
+    this._asking = false; // 重置密码盘弹出标记
     this._el.classList.add('show');
     Statusbar.setStyle('dark'); // 过渡色
     Statusbar.auto(null, 60);  // 自动采样锁屏壁纸：浅色壁纸 → 黑字 + 锁屏浅色UI
@@ -89,9 +90,12 @@ export const Lock = {
      after：解锁成功后的回调（如锁屏相机快捷入口） */
   unlock(after) {
     if (!this._el.classList.contains('show')) return;
+    if (this._asking) return; // 密码盘已弹出：防连续触发叠出第二块盘
     if (Passcode.isOn() && !this._authed) {
       /* forgot:true → 锁屏密码盘显示「忘记密码？」（取消键下方），可重设后直接解锁 */
+      this._asking = true;
       Passcode.ask({ title: '输入密码', verify: true, forgot: true }).then(code => {
+        this._asking = false;
         if (!code) return; // 取消 → 留在锁屏
         this._authed = true;
         this._doUnlock(after);

@@ -2,20 +2,16 @@
 
 .pg-head {
   display: flex; align-items: baseline; gap: 10px;
-  padding: 18px 4px 9px;
+  padding: 18px 16px 9px;
 }
 .pg-date { font-size: 22px; font-weight:700; letter-spacing:-.5px; color:var(--text); }
 .pg-count { font-size: 13px; color: var(--text-2); font-weight: 400; }
 
-/* 分组容器：卡片式微圆角 + 阴影（iOS 图库质感） */
-.pg-groups-wrap { padding: 0 12px; }
+/* 分组容器：iOS 原生边到边直角网格（用户反馈：左侧圆角改直角） */
 
 .photo-grid {
   display: grid;
   gap: 2px;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,.05);
 }
 .photo-cell {
   position: relative;

@@ -407,7 +407,7 @@ html[data-theme="dark"] .pub-submit:disabled { background: #3a3a3c; }
   transition:transform .2s var(--ease-ios, ease);
 }
 .th-wall-preview:active{ transform:scale(.97); }
-/* 主屏预览：迷你主屏（状态栏 + 8 彩色图标 + 坞站） */
+/* 主屏预览：迷你主屏（状态栏 + 8 线条图标 + 坞站） */
 .th-hs{ position:absolute; inset:0; display:flex; flex-direction:column; padding:10px 9px 11px; }
 .th-hs-status{ display:flex; justify-content:space-between; align-items:center; }
 .th-hs-status span{
@@ -426,15 +426,12 @@ html[data-theme="dark"] .pub-submit:disabled { background: #3a3a3c; }
   background:rgba(255,255,255,.88);
 }
 .th-hs-icons{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:3px 4px; }
-.th-hs-icons i{ aspect-ratio:1; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,.2); }
-.th-hs-icons i:nth-child(1){ background:linear-gradient(160deg,#5AC8FA,#0A84D0); }
-.th-hs-icons i:nth-child(2){ background:linear-gradient(160deg,#FFD60A,#FF9F0A); }
-.th-hs-icons i:nth-child(3){ background:linear-gradient(160deg,#FF6482,#FF375F); }
-.th-hs-icons i:nth-child(4){ background:linear-gradient(160deg,#30D158,#28B34C); }
-.th-hs-icons i:nth-child(5){ background:linear-gradient(160deg,#BF5AF2,#8944AB); }
-.th-hs-icons i:nth-child(6){ background:linear-gradient(160deg,#64D2FF,#32ADE6); }
-.th-hs-icons i:nth-child(7){ background:linear-gradient(160deg,#FF9F0A,#FF6B00); }
-.th-hs-icons i:nth-child(8){ background:linear-gradient(160deg,#A8E10C,#7DC000); }
+/* 线条风格：细描边 + 极淡填充（用户反馈：彩色渐变改为线条） */
+.th-hs-icons i{
+  aspect-ratio:1; border-radius:8px;
+  border:1px solid rgba(255,255,255,.55);
+  background:rgba(255,255,255,.07);
+}
 .th-hs-dock{
   margin-top:auto;
   display:grid; grid-template-columns:repeat(4,1fr); gap:9px;
@@ -444,11 +441,11 @@ html[data-theme="dark"] .pub-submit:disabled { background: #3a3a3c; }
   backdrop-filter:blur(14px);
   -webkit-backdrop-filter:blur(14px);
 }
-.th-hs-dock i{ aspect-ratio:1; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,.16); }
-.th-hs-dock i:nth-child(1){ background:linear-gradient(160deg,#30D158,#28A745); }
-.th-hs-dock i:nth-child(2){ background:linear-gradient(160deg,#64D2FF,#0A84D0); }
-.th-hs-dock i:nth-child(3){ background:linear-gradient(160deg,#E5E5EA,#AEAEB2); }
-.th-hs-dock i:nth-child(4){ background:linear-gradient(160deg,#FF6482,#FF2D55); }
+.th-hs-dock i{
+  aspect-ratio:1; border-radius:8px;
+  border:1px solid rgba(255,255,255,.5);
+  background:rgba(255,255,255,.10);
+}
 /* 锁屏预览：大时钟 + 日期 */
 .th-lock-time{
   position:absolute; top:24%; left:0; right:0;

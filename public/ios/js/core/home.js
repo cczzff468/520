@@ -10,7 +10,10 @@ import { toast } from './ui.js';
 /* 按使用频率与功能分组编排：小组件旁放时钟/天气，其次是相册/通讯录，第三排工具类，第四排其他
    朋友圈不再单独占桌面图标（与微信深度整合，入口保留在微信「我」页） */
 const GRID_ORDER = ['clock', 'weather', 'photos', 'contacts', 'notes', 'calendar', 'calculator', 'recorder', 'compass', 'themes', 'settings'];
-const DOCK_ORDER = ['wechat', 'browser', 'camera', 'music'];
+const DOCK_ORDER = ['browser', 'camera', 'music'];
+/* 已下架应用：微信 APP 已按用户要求从主界面移除；
+   存量用户 homeLayout 里可能仍存有这些 id，渲染前统一剔除 */
+const RETIRED_APPS = new Set(['wechat']);
 const LIVE_ICONS = ['clock', 'calendar'];
 const X_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
@@ -55,9 +58,9 @@ export const Home = {
       this.renderGrid();
     });
     this.layout.hidden = Array.isArray(this.layout.hidden) ? this.layout.hidden : [];
-    /* 过滤历史遗留的非法 id（如已下线应用/损坏数据），防止 buildIcon 崩溃中断整屏渲染 */
-    this.layout.grid = this.layout.grid.filter(id => typeof id === 'string' && Registry.get(id) && typeof AppIcons[id] === 'function');
-    this.layout.dock = this.layout.dock.filter(id => typeof id === 'string' && Registry.get(id) && typeof AppIcons[id] === 'function');
+    /* 过滤历史遗留的非法 id（已下线应用/损坏数据）与已下架应用，防止 buildIcon 崩溃中断整屏渲染 */
+    this.layout.grid = this.layout.grid.filter(id => typeof id === 'string' && !RETIRED_APPS.has(id) && Registry.get(id) && typeof AppIcons[id] === 'function');
+    this.layout.dock = this.layout.dock.filter(id => typeof id === 'string' && !RETIRED_APPS.has(id) && Registry.get(id) && typeof AppIcons[id] === 'function');
 
     /* 兼容后续新增的默认应用：自动补到网格末尾 */
     GRID_ORDER.concat(DOCK_ORDER).forEach(id => {
@@ -101,8 +104,7 @@ export const Home = {
     /* 实时图标每 20 秒刷新 */
     this._liveTimer = setInterval(() => this.refreshLiveIcons(), 20000);
 
-    /* 未读徽标 */
-    Bus.on('wechat:unread', (n) => this.updateBadge('wechat', n));
+    /* 未读徽标（微信已下架，无对应图标，监听移除） */
     Bus.on('music:playing', () => this.updateIsland());
 
     /* 编辑模式：点击空白（壁纸）退出 */
