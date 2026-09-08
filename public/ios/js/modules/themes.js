@@ -18,8 +18,10 @@ const CHEV_SVG = '<svg width="9" height="15" viewBox="0 0 8 14" fill="none" stro
 const X_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const PHOTO_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.7"/><path d="M21 15.5l-4.5-4.5-7 7"/></svg>';
 const CHECK_SVG = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5L19.5 7"/></svg>';
-const GRID_ICON_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg>';
+const GRID_ICON_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg>';
 const TRASH_SVG = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V4.8A1.3 1.3 0 0 1 10.8 3.5h2.4A1.3 1.3 0 0 1 14.5 4.8V7"/><path d="M6.5 7l.9 12.1A1.9 1.9 0 0 0 9.3 21h5.4a1.9 1.9 0 0 0 1.9-1.9L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>';
+const INFO_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.2"/><path d="M12 11v5"/><path d="M12 7.6v.1"/></svg>';
+const TRASH_R_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9.5 7V4.8A1.3 1.3 0 0 1 10.8 3.5h2.4A1.3 1.3 0 0 1 14.5 4.8V7"/><path d="M6.5 7l.9 12.1A1.9 1.9 0 0 0 9.3 21h5.4a1.9 1.9 0 0 0 1.9-1.9L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>';
 
 /* 手机上传图片 → 压缩为 JPEG dataURL（长边≤1440，质量0.85，IndexedDB 友好） */
 function compressImageFile(file, maxEdge = 1440, quality = 0.85) {
@@ -191,13 +193,15 @@ export default {
 
           <div class="inset-group-title">自定义图标 · 从手机上传</div>
           <div class="th-ic-card" id="th-ic-card">
-            <div class="th-ic-strip" id="th-ic-strip"></div>
-            <div class="row th-ic-row" id="th-ic-row">
-              <div class="row-icon" style="background:linear-gradient(135deg,#5E5CE6,#BF5AF2)">${GRID_ICON_SVG}</div>
-              <div class="row-label">自定义应用图标</div>
-              <div class="row-val" id="th-ic-count">未自定义</div>
-              <div class="row-chevron">${CHEV_SVG}</div>
+            <div class="th-ic-head" id="th-ic-row">
+              <div class="th-ic-head-icon">${GRID_ICON_SVG}</div>
+              <div class="th-ic-head-txt">
+                <div class="th-ic-head-title">自定义应用图标</div>
+                <div class="th-ic-head-sub" id="th-ic-count">未自定义</div>
+              </div>
+              <div class="th-ic-head-chev">${CHEV_SVG}</div>
             </div>
+            <div class="th-ic-strip" id="th-ic-strip"></div>
           </div>
 
           <div class="inset-group">
@@ -437,7 +441,7 @@ async function pickPhotoWallpaper() {
 
 /* ============ 自定义图标 ============ */
 
-/* 主页图标预览条 + 计数 */
+/* 主页图标预览条（全部应用，已自定义高亮）+ 计数 */
 async function renderIconStrip() {
   if (!root) return;
   const strip = root.querySelector('#th-ic-strip');
@@ -445,13 +449,13 @@ async function renderIconStrip() {
   if (!strip) return;
   const ovs = await Settings.load('iconOverrides', {}) || {};
   const ids = customizableIds();
-  strip.innerHTML = ids.slice(0, 6).map(id => {
+  strip.innerHTML = ids.map(id => {
     const ov = ovs[id];
-    return `<div class="th-ic-chip">${ov ? `<img src="${ov}" alt="">` : AppIcons[id]()}</div>`;
+    return `<div class="th-ic-chip${ov ? ' custom' : ''}" title="${escapeAttr(Registry.get(id) ? Registry.get(id).name : id)}">${ov ? `<img src="${ov}" alt="">` : AppIcons[id]()}${ov ? `<span class="th-ic-cb">${CHECK_SVG}</span>` : ''}</div>`;
   }).join('');
   if (count) {
     const n = ids.filter(id => ovs[id]).length;
-    count.textContent = n ? `已自定义 ${n} 个` : '未自定义';
+    count.textContent = n ? `已自定义 ${n} 个 · 点按管理` : '未自定义 · 从手机上传图片';
   }
 }
 
@@ -472,7 +476,8 @@ async function renderIconPage(body) {
   const ids = customizableIds();
   const anyCustom = ids.some(id => ovs[id]);
   body.innerHTML = `
-    <div class="th-ic-tip">点按应用图标 · 从手机上传图片替换</div>
+    <div class="th-ic-pill">${INFO_SVG}点按应用图标 · 从手机上传图片替换</div>
+    <div class="th-ic-sec"><span>全部应用</span><span>共 ${ids.length} 个</span></div>
     <div class="th-ic-grid" id="th-ic-grid">
       ${ids.map(id => {
         const ov = ovs[id];
@@ -483,7 +488,7 @@ async function renderIconPage(body) {
         </div>`;
       }).join('')}
     </div>
-    ${anyCustom ? '<button class="th-ic-resetall" id="th-ic-resetall">恢复全部默认图标</button>' : ''}
+    ${anyCustom ? `<button class="th-ic-resetall" id="th-ic-resetall" type="button">${TRASH_R_SVG}恢复全部默认图标</button>` : ''}
     <div class="th-ic-hint">上传的图片自动居中裁成正方形，永久保存在本机。<br>自定义后，主屏幕与程序坞的图标同时更换。</div>`;
 
   body.querySelectorAll('.th-ic-cell').forEach(cell => {
@@ -508,14 +513,19 @@ async function renderIconPage(body) {
   };
 }
 
-/* 单个应用图标操作 Sheet */
+/* 单个应用图标操作 Sheet：顶部当前图标预览 + 操作行 */
 function iconActions(body, id, ovs) {
   const app = Registry.get(id);
   const isCustom = !!ovs[id];
+  const ov = ovs[id];
   sheet({
     title: (app ? app.name : id) + ' · 图标',
     build(sb, close) {
       sb.innerHTML = `
+        <div class="ia-preview">
+          <div class="ia-sq${isCustom ? ' custom' : ''}">${ov ? `<img src="${ov}" alt="">` : AppIcons[id]()}</div>
+          <div class="ia-status${isCustom ? ' custom' : ''}">${isCustom ? '当前使用上传的自定义图标' : '当前使用默认图标'}</div>
+        </div>
         <div class="inset-group">
           <div class="inset-card">
             <div class="row" id="ia-upload"><div class="row-icon" style="background:var(--accent)">${PHOTO_SVG.replace('width="18" height="18"', 'width="17" height="17"')}</div>

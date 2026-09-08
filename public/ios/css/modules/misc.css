@@ -505,68 +505,125 @@ html[data-theme="dark"] .pub-submit:disabled { background: #3a3a3c; }
 .th-wall-btn.more svg{ opacity:.55; }
 
 /* ---- 主题APP：自定义图标 ---- */
+/* 主页卡片：渐变头图标 + 双行文案 + 凹槽托盘预览条 */
 .th-ic-card{
   margin:0 16px 4px;
   background:var(--card);
   border-radius:16px;
   box-shadow:var(--shadow-card);
-  padding:11px 9px 7px;
-  display:flex; flex-direction:column; gap:9px;
+  padding:13px 13px 12px;
+  display:flex; flex-direction:column; gap:11px;
+  cursor:pointer;
 }
-.th-ic-strip{ display:flex; gap:9px; padding:2px 3px 3px; cursor:pointer; }
+.th-ic-card:active{ transform:scale(.985); transition:transform .2s var(--ease-ios, ease); }
+.th-ic-head{ display:flex; align-items:center; gap:11px; }
+.th-ic-head-icon{
+  width:40px; height:40px; border-radius:10.5px; flex:none;
+  background:linear-gradient(135deg,#5E5CE6,#BF5AF2);
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  box-shadow:0 3px 9px rgba(94,92,230,.38);
+}
+.th-ic-head-icon svg{ width:20px; height:20px; }
+.th-ic-head-txt{ flex:1; min-width:0; }
+.th-ic-head-title{ font-size:15.5px; font-weight:650; color:var(--text); letter-spacing:-.2px; }
+.th-ic-head-sub{ font-size:12px; color:var(--text-3); margin-top:2.5px; }
+.th-ic-head-chev{ flex:none; color:var(--text-3); display:flex; padding-right:2px; }
+/* 图标预览条：内嵌凹槽 + 横向滚动 + 已自定义高亮 */
+.th-ic-strip{
+  display:flex; gap:10px;
+  padding:9px 10px;
+  background:var(--fill);
+  border-radius:13px;
+  overflow-x:auto;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  scroll-snap-type:x proximity;
+  -webkit-overflow-scrolling:touch;
+}
+.th-ic-strip::-webkit-scrollbar{ display:none; }
 .th-ic-chip{
-  width:42px; height:42px; border-radius:10.5px;
+  width:44px; height:44px; border-radius:11px;
   overflow:hidden; position:relative; flex:none;
-  box-shadow:0 2px 6px rgba(0,0,0,.15);
+  box-shadow:0 2px 6px rgba(0,0,0,.14);
+  scroll-snap-align:start;
 }
+.th-ic-chip.custom{ box-shadow:0 0 0 2px var(--accent), 0 2px 6px rgba(0,0,0,.14); }
 .th-ic-chip svg{ width:100%; height:100%; display:block; }
 .th-ic-chip img{ width:100%; height:100%; object-fit:cover; display:block; }
-.th-ic-row{ border-radius:11px; cursor:pointer; transition:background .16s ease; }
-.th-ic-row:active{ background:var(--fill); }
-.th-ic-row .row-val{ font-size:13px; }
+.th-ic-cb{
+  position:absolute; top:2px; right:2px;
+  width:15px; height:15px; border-radius:50%;
+  background:var(--accent); color:#fff;
+  border:1.5px solid #fff;
+  display:flex; align-items:center; justify-content:center;
+}
+.th-ic-cb svg{ width:8px; height:8px; }
 
-/* 图标自定义子页 */
-.th-ic-tip{
-  padding:2px 26px 6px;
+/* ---------- 图标自定义子页 ---------- */
+.th-ic-pill{
+  display:flex; align-items:center; gap:6px;
+  margin:4px auto 0; padding:7px 15px;
+  background:var(--fill); border-radius:100px;
+  font-size:12px; color:var(--text-2);
+  width:max-content; max-width:100%;
+}
+.th-ic-pill svg{ width:13px; height:13px; color:var(--text-3); flex:none; }
+.th-ic-sec{
+  display:flex; justify-content:space-between; align-items:baseline;
+  padding:14px 26px 4px;
   font-size:12.5px; color:var(--text-3);
-  text-align:center;
+  letter-spacing:.3px;
 }
 .th-ic-grid{
   display:grid; grid-template-columns:repeat(4,1fr);
-  gap:22px 6px;
-  padding:8px 24px 12px;
+  gap:24px 6px;
+  padding:10px 22px 14px;
 }
-.th-ic-cell{ display:flex; flex-direction:column; align-items:center; gap:7px; cursor:pointer; }
+.th-ic-cell{ display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
 .th-ic-cell:active .th-ic-sq{ transform:scale(.86); }
 .th-ic-sq{
   width:62px; height:62px; border-radius:15px;
   overflow:hidden; position:relative;
-  box-shadow:0 4px 10px rgba(0,0,0,.17);
-  transition:transform .22s var(--ease-spring);
+  box-shadow:0 4px 10px rgba(0,0,0,.16);
+  transition:transform .24s var(--ease-spring);
 }
+.th-ic-sq.custom{ box-shadow:0 0 0 2.5px var(--accent), 0 4px 10px rgba(0,0,0,.16); }
 .th-ic-sq svg{ width:100%; height:100%; display:block; }
 .th-ic-sq img{ width:100%; height:100%; object-fit:cover; display:block; }
 .th-ic-badge{
   position:absolute; top:4px; right:4px;
-  width:17px; height:17px; border-radius:50%;
+  width:18px; height:18px; border-radius:50%;
   background:var(--accent); color:#fff;
+  border:1.5px solid #fff;
   display:flex; align-items:center; justify-content:center;
   box-shadow:0 1px 4px rgba(0,0,0,.3);
 }
 .th-ic-name{
   font-size:11.5px; color:var(--text-2);
-  max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  text-align:center;
+  max-width:82px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  text-align:center; letter-spacing:.1px;
 }
 .th-ic-resetall{
-  display:block; margin:12px 16px 0; width:calc(100% - 32px);
-  padding:12.5px; border-radius:13px; border:none;
-  background:var(--fill); color:var(--danger);
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  margin:10px 16px 0; width:calc(100% - 32px);
+  padding:13px; border-radius:13px; border:none;
+  background:var(--card); color:var(--danger);
   font-size:14.5px; font-weight:600; font-family:inherit; cursor:pointer;
-  transition:opacity .16s ease;
+  box-shadow:var(--shadow-card);
+  transition:opacity .16s ease, transform .16s ease;
 }
-.th-ic-resetall:active{ opacity:.55; }
+.th-ic-resetall svg{ width:16px; height:16px; flex:none; }
+.th-ic-resetall:active{ opacity:.55; transform:scale(.985); }
 .th-ic-hint{
-  font-size:12px; color:var(--text-3); line-height:1.65;
-  padding:16px 24px 28px; text-align:center;
+  font-size:12px; color:var(--text-3); line-height:1.7;
+  padding:18px 28px 30px; text-align:center;
 }
+
+/* 单图标操作 Sheet：当前图标预览 */
+.ia-preview{ display:flex; flex-direction:column; align-items:center; padding:2px 0 6px; }
+.ia-sq{ width:66px; height:66px; border-radius:16.5px; overflow:hidden; box-shadow:0 5px 14px rgba(0,0,0,.18); }
+.ia-sq.custom{ box-shadow:0 0 0 2.5px var(--accent), 0 5px 14px rgba(0,0,0,.18); }
+.ia-sq svg, .ia-sq img{ width:100%; height:100%; object-fit:cover; display:block; }
+.ia-status{ margin-top:9px; font-size:12.5px; color:var(--text-3); }
+.ia-status.custom{ color:var(--accent); font-weight:500; }
