@@ -322,9 +322,9 @@ function render() {
   if (!numEl) return;
   const text = display === '错误' ? '错误' : formatDisplay(display);
   numEl.textContent = text;
-  // 字号随长度收缩
+  // 字号随长度收缩（基准 86px / 460，长数逐级缩小）
   const len = text.length;
-  numEl.style.fontSize = (len > 9 ? 56 : len > 7 ? 64 : 76) + 'px';
+  numEl.style.fontSize = (len > 9 ? 62 : len > 7 ? 74 : 86) + 'px';
   if (mode === 'scientific' && exprEl) {
     exprEl.textContent = prettyExpr(expr);
   } else if (exprEl) {

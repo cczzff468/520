@@ -16,6 +16,9 @@ let currentPhotos = [];
 
 let pendingViewId = null;
 
+/* 相机来源小角标 */
+const CAM_MINI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l2-3h6l2 3h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="12" r="3.4"/></svg>';
+
 export default {
   id: 'photos',
   name: '相册',
@@ -138,6 +141,8 @@ function photoCell(p) {
   const cell = el('div', 'photo-cell');
   cell.dataset.id = p.id;
   cell.innerHTML = `<img loading="lazy" src="${p.thumb || p.data}" alt="${escapeHtml(p.name)}">
+    ${p.from === 'camera' ? `<span class="from-cam">${CAM_MINI}</span>` : ''}
+    ${p.liked ? '<span class="cell-liked">\u2665</span>' : ''}
     ${selectMode ? `<div class="select-dot ${selected.has(p.id) ? 'on' : ''}"></div>` : ''}`;
   cell.onclick = () => {
     if (selectMode) {
@@ -251,6 +256,7 @@ async function openViewer(photoId) {
     scale = 1; tx = 0; ty = 0;
     viewer.querySelector('#pv-date').textContent = fmtDate(p.uploadDate);
     viewer.querySelector('#pv-count').textContent = `${cur + 1} / ${photos.length}`;
+    viewer.querySelector('#pv-heart').classList.toggle('liked', !!p.liked);
   }
   show(idx);
 
@@ -274,7 +280,14 @@ async function openViewer(photoId) {
     });
   };
   viewer.querySelector('#pv-share').onclick = () => sharePhoto(photos[cur]);
-  viewer.querySelector('#pv-heart').onclick = () => toast('已收藏 ❤️');
+  viewer.querySelector('#pv-heart').onclick = async () => {
+    const p = photos[cur];
+    p.liked = !p.liked;
+    await DB.put('photos', p);
+    viewer.querySelector('#pv-heart').classList.toggle('liked', p.liked);
+    haptic(4);
+    toast(p.liked ? '已收藏' : '已取消收藏');
+  };
   viewer.querySelector('#pv-trash').onclick = async () => {
     const ok = await confirmDialog('删除照片', '这张照片将从相册（IndexedDB）中删除。', { okText: '删除', danger: true });
     if (!ok) return;

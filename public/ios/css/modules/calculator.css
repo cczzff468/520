@@ -26,10 +26,10 @@
 }
 .calc-num {
   color: #fff;
-  font-size: 76px; font-weight: 250;
-  letter-spacing: -1.5px;
+  font-size: 86px; font-weight: 460;
+  letter-spacing: -2px;
   max-width: 100%;
-  line-height: 1.1;
+  line-height: 1.08;
   overflow: hidden;
   font-variant-numeric: tabular-nums;
 }
@@ -118,4 +118,4 @@ html[data-theme="dark"] .calc-key.zero {
 .calc-root.sci .calc-key { font-size: 22px; }
 .calc-root.sci .calc-std-grid { gap: 8px; }
 .calc-root.sci .calc-display { min-height: 60px; }
-.calc-root.sci .calc-num { font-size: 48px; }
+.calc-root.sci .calc-num { font-size: 54px; }

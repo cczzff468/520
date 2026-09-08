@@ -40,18 +40,74 @@
 .cam-tb-left {
   display: flex; align-items: center; gap: 12px;
 }
+.cam-tb-right {
+  display: flex; align-items: center; gap: 12px;
+}
 .cam-tb-btn {
   width: 40px; height: 40px; border-radius: 50%;
   background: rgba(40,40,44,.55);
   display: flex; align-items: center; justify-content: center;
   color: #fff;
   backdrop-filter: blur(6px);
+  position: relative;
 }
 .cam-tb-btn.on { background: #FFD335; color: #000; }
+/* 倒计时角标（3s/10s） */
+.cam-tb-badge {
+  position: absolute; top: -4px; right: -5px;
+  min-width: 18px; height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #FFD335;
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.cam-tb-btn.on .cam-tb-badge { display: flex; }
 .cam-mode-label {
   font-size: 15px; font-weight: 600;
   color: #F7C948;
   letter-spacing: 2px;
+}
+
+/* 变焦胶囊行（快门上方，iOS 三圆点样式） */
+.cam-zoom {
+  position: absolute; bottom: 150px; left: 0; right: 0;
+  display: flex; justify-content: center; gap: 10px;
+  z-index: 6;
+}
+.cam-zoom button {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: rgba(30,30,34,.45);
+  color: rgba(255,255,255,.85);
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+  transition: transform .2s var(--ease-ios, ease), background .2s ease, color .2s ease;
+}
+.cam-zoom button:active { transform: scale(.88); }
+.cam-zoom button.on { background: #fff; color: #000; }
+
+/* 倒计时数字 */
+.cam-count {
+  position: absolute; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  font-size: 110px;
+  font-weight: 250;
+  color: #F7C948;
+  text-shadow: 0 4px 30px rgba(0,0,0,.5);
+  z-index: 8;
+  pointer-events: none;
+}
+@keyframes camCount {
+  0% { transform: scale(1.7); opacity: 0; }
+  18% { opacity: 1; }
+  100% { transform: scale(.86); opacity: .15; }
 }
 
 .cam-bottom {
@@ -91,7 +147,7 @@
 .cam-flip:active { transform: scale(.9); }
 
 .cam-filter-bar {
-  position: absolute; bottom: 128px; left: 0; right: 0;
+  position: absolute; bottom: 196px; left: 0; right: 0;
   display: flex; justify-content: center; gap: 14px;
   z-index: 7;
   overflow-x: auto;

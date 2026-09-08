@@ -28,6 +28,9 @@ const SEARCH_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" 
 /* Apple 标志（页脚水印） */
 const APPLE_MARK = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" opacity=".45"><path d="M17.05 12.54c-.02-2.2 1.79-3.26 1.87-3.31-1.02-1.49-2.61-1.69-3.17-1.72-1.35-.14-2.63.79-3.31.79-.69 0-1.74-.77-2.86-.75-1.47.02-2.83.86-3.59 2.18-1.53 2.66-.39 6.6 1.1 8.76.72 1.05 1.58 2.22 2.71 2.18 1.09-.04 1.5-.7 2.82-.7 1.31 0 1.69.7 2.84.68 1.17-.02 1.92-1.07 2.64-2.12.83-1.22 1.17-2.4 1.19-2.46-.03-.01-2.29-.88-2.31-3.53zM14.31 5.66c.6-.73 1-1.74.89-2.75-.86.04-1.91.57-2.53 1.3-.55.64-1.03 1.66-.9 2.65.96.07 1.94-.49 2.54-1.2z"/></svg>';
 
+/* iCloud 小云图标（账户卡副标题前缀） */
+const ICLOUD_MINI = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 19a4.5 4.5 0 0 0 .4-8.98A6.5 6.5 0 0 0 5.2 11.5 4 4 0 0 0 6 19.5h11.5z"/></svg>';
+
 const ICONS = {
   info: rowIconHTML('#8E8E93', '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.5"/>'),
   lang: rowIconHTML('#8E8E93', '<path d="M3 5.5h8M7 3.5v2M9.5 5.5c-.5 4-3 7.5-6.5 9.5M5 10.5c1 2 3 3.5 5 4.5M13.5 20.5l4-10 4 10M15 17h5"/>'),
@@ -104,7 +107,7 @@ function accountCard() {
           <div class="st-avatar">${PERSON_SVG}</div>
           <div class="row-label">
             <div class="st-account-name" id="st-account-name">Apple ID</div>
-            <div class="st-account-sub">iCloud · 媒体与购买项目</div>
+            <div class="st-account-sub">${ICLOUD_MINI}iCloud · 媒体与购买项目</div>
           </div>
           <div class="row-chevron">${chevron}</div>
         </div>

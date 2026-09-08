@@ -1,4 +1,4 @@
-/* ============ 相机 ============ */
+/* ============ 相机（变焦 / 倒计时 / 滤镜 / 闪光 / 前后镜 / 网格） ============ */
 
 import { el, uid, haptic, Bus } from '../core/utils.js';
 import { DB } from '../core/db.js';
@@ -13,12 +13,17 @@ const FILTERS = [
   { id: 'mono', name: '黑白', css: 'grayscale(1) contrast(1.18)' },
   { id: 'silver', name: '银色调', css: 'grayscale(1) brightness(1.12) contrast(.9) sepia(.12)' },
 ];
+const ZOOM_STEPS = [1, 2, 3];
 
 let stream = null;
 let root = null;
 let ctxRef = null;
 let currentFilter = 'none';
 let activePreview = null; // 预览层引用（供返回键关闭）
+let camFacing = 'environment';
+let flashOn = false;
+let zoom = 1;
+let timerMode = 0; // 0=关 / 3 / 10（秒）
 
 export default {
   id: 'camera',
@@ -54,6 +59,7 @@ function buildUI() {
     <div class="cam-stage" id="cam-stage">
       <video id="cam-video" autoplay playsinline muted></video>
       <div class="cam-grid" id="cam-grid"></div>
+      <div class="cam-count" id="cam-count"></div>
       <div class="cam-denied" id="cam-denied" style="display:none">
         <svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l2-3h6l2 3h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/><path d="M3 3l18 18" stroke-width="1.8"/></svg>
         <div class="cd-title">无法访问摄像头</div>
@@ -64,10 +70,25 @@ function buildUI() {
     <div class="cam-topbar">
       <div class="cam-tb-left">
         <button class="cam-tb-btn" id="cam-back" aria-label="返回"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4.5l-7.5 7.5 7.5 7.5"/></svg></button>
-        <button class="cam-tb-btn" id="cam-flash"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L5 13.5h6L11 22l8-11.5h-6z"/></svg></button>
+        <button class="cam-tb-btn" id="cam-flash" aria-label="闪光灯"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L5 13.5h6L11 22l8-11.5h-6z"/></svg></button>
       </div>
       <div class="cam-mode-label">照片</div>
-      <button class="cam-tb-btn" id="cam-grid-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button>
+      <div class="cam-tb-right">
+        <button class="cam-tb-btn cam-tb-timer" id="cam-timer" aria-label="倒计时">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.6 2M9.5 2.5h5" stroke-linecap="round"/></svg>
+          <span class="cam-tb-badge" id="cam-timer-badge"></span>
+        </button>
+        <button class="cam-tb-btn" id="cam-filters" aria-label="滤镜">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="9" cy="12" r="5.6"/><circle cx="15" cy="12" r="5.6"/></svg>
+        </button>
+        <button class="cam-tb-btn" id="cam-grid-btn" aria-label="网格线"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button>
+      </div>
+    </div>
+    <div class="cam-zoom" id="cam-zoom">
+      ${ZOOM_STEPS.map(z => `<button data-z="${z}" ${z === 1 ? 'class="on"' : ''}>${z}×</button>`).join('')}
+    </div>
+    <div class="cam-filter-bar" id="cam-filterbar" style="display:none">
+      ${FILTERS.map(f => `<button data-f="${f.id}" ${f.id === 'none' ? 'class="on"' : ''}>${f.name}</button>`).join('')}
     </div>
     <div class="cam-bottom">
       <button class="cam-thumb" id="cam-thumb"></button>
@@ -75,23 +96,46 @@ function buildUI() {
       <button class="cam-flip" id="cam-flip">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 0 1 15.5-6.2M21 12a9 9 0 0 1-15.5 6.2"/><path d="M18.5 2.5v3.5h-3.5M5.5 21.5V18h3.5"/></svg>
       </button>
-    </div>
-    <div class="cam-filter-bar" id="cam-filterbar" style="display:none">
-      ${FILTERS.map(f => `<button data-f="${f.id}" ${f.id === 'none' ? 'class="on"' : ''}>${f.name}</button>`).join('')}
     </div>`;
 
-  root.querySelector('#cam-shutter').onclick = capture;
+  root.querySelector('#cam-shutter').onclick = shoot;
   root.querySelector('#cam-back').onclick = () => {
     if (activePreview && activePreview.isConnected) { activePreview.remove(); activePreview = null; return; }
     ctxRef && ctxRef.close(); // 返回主屏
   };
   root.querySelector('#cam-grid-btn').onclick = () => {
+    haptic(4);
     const g = root.querySelector('#cam-grid');
     g.style.display = g.style.display === 'none' ? 'block' : 'none';
   };
   root.querySelector('#cam-flash').onclick = toggleFlash;
   root.querySelector('#cam-flip').onclick = flipCamera;
   root.querySelector('#cam-retry').onclick = () => { root.querySelector('#cam-denied').style.display = 'none'; startCamera(); };
+
+  /* 倒计时：关 → 3s → 10s → 关 */
+  root.querySelector('#cam-timer').onclick = () => {
+    haptic(4);
+    timerMode = timerMode === 0 ? 3 : timerMode === 3 ? 10 : 0;
+    const btn = root.querySelector('#cam-timer');
+    const badge = root.querySelector('#cam-timer-badge');
+    btn.classList.toggle('on', timerMode > 0);
+    badge.textContent = timerMode > 0 ? timerMode : '';
+  };
+
+  /* 滤镜栏显隐（iOS 滤镜轮盘开关） */
+  root.querySelector('#cam-filters').onclick = () => {
+    haptic(4);
+    const bar = root.querySelector('#cam-filterbar');
+    const btn = root.querySelector('#cam-filters');
+    const show = bar.style.display === 'none';
+    bar.style.display = show ? 'flex' : 'none';
+    btn.classList.toggle('on', show);
+  };
+
+  /* 变焦 */
+  root.querySelectorAll('#cam-zoom button').forEach(b => {
+    b.onclick = () => { haptic(4); setZoom(+b.dataset.z); };
+  });
 
   root.querySelectorAll('#cam-filterbar button').forEach(b => {
     b.onclick = () => {
@@ -101,6 +145,8 @@ function buildUI() {
       applyFilterPreview();
     };
   });
+
+  bindZoomGestures();
 
   // 最近照片缩略
   DB.byIndex('photos', 'uploadDate').then(ps => {
@@ -113,6 +159,7 @@ function buildUI() {
   });
 }
 
+/* ---------- 取流 ---------- */
 async function startCamera(facing = 'environment') {
   stopCamera();
   const video = root.querySelector('#cam-video');
@@ -123,6 +170,7 @@ async function startCamera(facing = 'environment') {
     });
     video.srcObject = stream;
     video.style.display = 'block';
+    applyZoomMirror();
   } catch (e) {
     console.warn('[camera]', e.message);
     video.style.display = 'none';
@@ -137,16 +185,92 @@ function stopCamera() {
 async function flipCamera() {
   haptic(8);
   camFacing = camFacing === 'environment' ? 'user' : 'environment';
+  zoom = 1;
+  syncZoomButtons();
   startCamera(camFacing);
 }
-let camFacing = 'environment';
 
-let flashOn = false;
+/* ---------- 变焦 ---------- */
+function setZoom(z) {
+  zoom = Math.min(5, Math.max(1, z));
+  syncZoomButtons();
+  applyZoomMirror();
+}
+function syncZoomButtons() {
+  root.querySelectorAll('#cam-zoom button').forEach(b => {
+    b.classList.toggle('on', +b.dataset.z === Math.round(zoom));
+  });
+}
+function applyZoomMirror() {
+  const video = root.querySelector('#cam-video');
+  if (!video) return;
+  /* 前摄镜像（iOS 自拍行为），变焦为正向缩放 */
+  video.style.transform = `scale(${zoom})${camFacing === 'user' ? ' scaleX(-1)' : ''}`;
+  video.style.transition = 'transform .24s var(--ease-ios, ease)';
+}
+/* 双击切换 1×/2× + 双指捏合连续变焦（1~5×） */
+function bindZoomGestures() {
+  const stage = root.querySelector('#cam-stage');
+  const video = root.querySelector('#cam-video');
+  let lastTap = 0;
+  let pinch0 = 0, z0 = 1;
+
+  stage.addEventListener('click', (e) => {
+    if (e.target.closest('.cam-tb-btn, .cam-bottom, .cam-zoom, .cam-filter-bar')) return;
+    const now = Date.now();
+    if (now - lastTap < 300) { haptic(4); setZoom(zoom > 1 ? 1 : 2); }
+    lastTap = now;
+  });
+
+  stage.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      pinch0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      z0 = zoom;
+      video.style.transition = 'none';
+    }
+  }, { passive: true });
+  stage.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && pinch0) {
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      setZoom(z0 * d / pinch0);
+    }
+  }, { passive: true });
+  stage.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) pinch0 = 0;
+  });
+
+  /* 桌面滚轮变焦 */
+  stage.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    setZoom(zoom * (e.deltaY < 0 ? 1.1 : 0.9));
+  }, { passive: false });
+}
+
+/* ---------- 闪光（硬件 torch 优先，无硬件时拍照屏幕补光） ---------- */
 async function toggleFlash() {
   haptic();
   flashOn = !flashOn;
   root.querySelector('#cam-flash').classList.toggle('on', flashOn);
-  if (flashOn) toast('拍照时将开启闪光（屏幕补光）');
+  if (!flashOn) {
+    /* 关闭：尝试关掉硬件 torch */
+    if (stream) {
+      const track = stream.getVideoTracks()[0];
+      try { await track.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) { /* noop */ }
+    }
+    return;
+  }
+  if (stream) {
+    const track = stream.getVideoTracks()[0];
+    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    if (caps && caps.torch) {
+      try {
+        await track.applyConstraints({ advanced: [{ torch: true }] });
+        toast('闪光灯已开（硬件）');
+        return;
+      } catch (e) { /* 降级 */ }
+    }
+  }
+  toast('无硬件闪光，拍照时屏幕补光');
 }
 
 function applyFilterPreview() {
@@ -155,7 +279,31 @@ function applyFilterPreview() {
   video.style.filter = f ? f.css : 'none';
 }
 
-/* ---------- 拍照 ---------- */
+/* ---------- 倒计时 ---------- */
+async function runCountdown(sec) {
+  const cd = root.querySelector('#cam-count');
+  cd.style.display = 'flex';
+  for (let i = sec; i > 0; i--) {
+    cd.textContent = i;
+    cd.style.animation = 'none';
+    void cd.offsetWidth;
+    cd.style.animation = 'camCount .95s ease both';
+    haptic(5);
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  cd.style.display = 'none';
+}
+
+/* ---------- 拍照入口（倒计时 → 拍摄） ---------- */
+async function shoot() {
+  if (timerMode > 0) {
+    haptic(8);
+    await runCountdown(timerMode);
+  }
+  capture();
+}
+
+/* ---------- 拍摄 ---------- */
 async function capture() {
   const video = root.querySelector('#cam-video');
   if (!video.srcObject) { toast('摄像头不可用'); return; }
@@ -170,24 +318,31 @@ async function capture() {
   }
 
   const f = FILTERS.find(x => x.id === currentFilter);
-  const w = video.videoWidth, h = video.videoHeight;
+  const vw = video.videoWidth, vh = video.videoHeight;
+  /* 变焦裁切：按当前倍率取中心区域 */
+  const z = Math.max(1, zoom);
+  const cw = Math.round(vw / z), ch = Math.round(vh / z);
+  const sx = (vw - cw) / 2, sy = (vh - ch) / 2;
+  const mirrored = camFacing === 'user';
+
   const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
+  canvas.width = cw; canvas.height = ch;
   const ctx = canvas.getContext('2d');
+  if (mirrored) { ctx.translate(cw, 0); ctx.scale(-1, 1); } /* 前摄：成片与预览一致（镜像） */
   if (f && f.css !== 'none') ctx.filter = f.css;
-  ctx.drawImage(video, 0, 0, w, h);
+  ctx.drawImage(video, sx, sy, cw, ch, 0, 0, cw, ch);
   const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
   // 缩略图
   const tc = document.createElement('canvas');
-  const k = 300 / Math.max(w, h);
-  tc.width = Math.round(w * k); tc.height = Math.round(h * k);
+  const k = 300 / Math.max(cw, ch);
+  tc.width = Math.round(cw * k); tc.height = Math.round(ch * k);
   tc.getContext('2d').drawImage(canvas, 0, 0, tc.width, tc.height);
   const thumb = tc.toDataURL('image/jpeg', 0.7);
 
   const photo = {
     id: uid('ph'), name: `拍照_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.jpg`,
-    data: dataUrl, thumb, w, h, size: Math.round(dataUrl.length * 0.75),
+    data: dataUrl, thumb, w: cw, h: ch, size: Math.round(dataUrl.length * 0.75),
     uploadDate: Date.now(), from: 'camera', filter: currentFilter,
   };
 
@@ -205,18 +360,6 @@ async function capture() {
   root.appendChild(preview);
   activePreview = preview;
 
-  const rerender = (fid) => {
-    const ff = FILTERS.find(x => x.id === fid);
-    preview.querySelector('img').style.filter = ff ? ff.css : 'none';
-    // 重新捕获滤镜
-    const c2 = document.createElement('canvas');
-    c2.width = w; c2.height = h;
-    const cx2 = c2.getContext('2d');
-    if (ff && ff.css !== 'none') cx2.filter = ff.css;
-    cx2.drawImage(video, 0, 0, w, h);
-    // 注意：video 仍在播放，用原始帧重画
-  };
-
   preview.querySelectorAll('.cam-filter-bar button').forEach(b => {
     b.onclick = () => {
       preview.querySelectorAll('.cam-filter-bar button').forEach(x => x.classList.remove('on'));
@@ -225,10 +368,10 @@ async function capture() {
       preview.querySelector('img').style.filter = ff ? ff.css : 'none';
       // 用原图重新应用滤镜
       const c2 = document.createElement('canvas');
-      c2.width = w; c2.height = h;
+      c2.width = cw; c2.height = ch;
       const cx2 = c2.getContext('2d');
       if (ff && ff.css !== 'none') cx2.filter = ff.css;
-      cx2.drawImage(canvas, 0, 0, w, h);
+      cx2.drawImage(canvas, 0, 0, cw, ch);
       const newData = c2.toDataURL('image/jpeg', 0.85);
       photo.data = newData;
       photo.filter = b.dataset.f;
