@@ -2,7 +2,7 @@
     左右滑动切换 · 点击卡片进入应用 · 上滑卡片关闭 ============ */
 
 import { el, haptic, Bus, onSwipe } from './utils.js';
-import { Apps as Registry, openApp, closeApp, isAppOpen } from './applayer.js';
+import { Apps as Registry, openApp, closeApp, isAppOpen, getLiveContent, Snapshots } from './applayer.js';
 import { Apps as AppIcons } from './icons.js';
 import { Statusbar } from './statusbar.js';
 
@@ -31,6 +31,15 @@ export const Switcher = {
         this.show();
       },
     });
+
+    /* 主屏/应用内点击底部 Home 横杠 → 打开切换器（显式入口） */
+    const homeBar = document.getElementById('home-bar');
+    if (homeBar) {
+      homeBar.addEventListener('click', () => {
+        if (document.getElementById('lock').classList.contains('show')) return;
+        this.show();
+      });
+    }
   },
 
   isOpen() { return !!(this._el && this._el.classList.contains('show') && !this._el.classList.contains('closing')); },
@@ -64,10 +73,49 @@ export const Switcher = {
       if (!app) return;
       const card = el('div', 'ts-card' + (id === curId ? ' cur' : ''));
       card.dataset.app = id;
-      card.innerHTML = `
-        ${id === curId ? '<span class="ts-badge">正在使用</span>' : ''}
-        <div class="ts-icon">${AppIcons[id]()}</div>
-        <div class="ts-name">${app.name}</div>`;
+      /* 快照来源：当前应用 = 实时 DOM 克隆；其他 = 关闭时保存的快照 */
+      let snap = null;
+      if (id === curId && getLiveContent()) {
+        try {
+          snap = getLiveContent().cloneNode(true);
+          snap.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+          snap.querySelectorAll('canvas, video, audio, iframe').forEach(n => n.remove());
+          snap.style.pointerEvents = 'none';
+        } catch (e) { snap = null; }
+      } else {
+        snap = Snapshots.get(id);
+        if (snap) snap = snap.cloneNode(true); // 展示克隆，源留给下次
+      }
+
+      if (snap) {
+        /* 实时界面卡片：缩放的界面快照 + 底部脚注（小图标+名称） */
+        card.innerHTML = `
+          ${id === curId ? '<span class="ts-badge">正在使用</span>' : ''}
+          <div class="ts-snap-wrap"><div class="ts-snap"></div></div>
+          <div class="ts-foot">
+            <div class="ts-mini">${AppIcons[id]()}</div>
+            <div class="ts-name">${app.name}</div>
+          </div>`;
+        const snapHost = card.querySelector('.ts-snap');
+        snapHost.appendChild(snap);
+        /* 按卡片实际宽度缩放（app-root 固定 393px 宽） */
+        requestAnimationFrame(() => {
+          const w = card.querySelector('.ts-snap-wrap').clientWidth || 240;
+          snapHost.style.transform = `scale(${(w / 393).toFixed(4)})`;
+        });
+      } else {
+        /* 无快照占位卡片（渐变底+图标+名称） */
+        card.innerHTML = `
+          ${id === curId ? '<span class="ts-badge">正在使用</span>' : ''}
+          <div class="ts-placeholder">
+            <div class="ts-icon">${AppIcons[id]()}</div>
+            <div class="ts-name">${app.name}</div>
+          </div>`;
+      }
+      /* 入场 stagger */
+      card.style.animationDelay = (i * 45).toFixed(0) + 'ms';
+      card.classList.add('enter');
+
       /* 鼠标指针显式捕获：上滑松手时 pointerup 仍落在卡片上（触摸天然隐式捕获） */
       card.addEventListener('pointerdown', (e) => {
         if (e.pointerType === 'mouse') { try { card.setPointerCapture(e.pointerId); } catch (err) { /* noop */ } }
@@ -90,6 +138,7 @@ export const Switcher = {
           card.classList.add('closing');
           const remove = () => {
             this._recents = this._recents.filter(x => x !== id);
+            Snapshots.clear(id); // 快照一并清理
             card.remove();
             if (id === Registry.currentId()) closeApp();
             if (!this._visibleRecents().length) this.close();

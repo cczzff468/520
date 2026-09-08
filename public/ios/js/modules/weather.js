@@ -11,21 +11,27 @@ let nav = null;
 let root = null;
 let ctxRef = null;
 
-/* 头部：左上加号（城市管理） · 居中城市名 · 右侧刷新
-   返回主屏依靠底部横杠上滑（多任务卡片流）关闭本应用 */
+/* 头部：左上返回键 · 居中城市名 · 右侧[城市管理+刷新]
+   返回主屏：左上返回键（也可底部横杠上滑关闭） */
+const BACK_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4.5l-7.5 7.5 7.5 7.5"/></svg>';
 const PLUS_SVG = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const REFRESH_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20.5 12a8.5 8.5 0 1 1-2.5-6M20.5 3.5V9H15"/></svg>';
 
 function headerHTML(cityName) {
   return `
     <div class="wt-header">
-      <button class="wt-plus" id="wt-plus" aria-label="城市管理">${PLUS_SVG}</button>
+      <button class="wt-back" id="wt-back" data-own-back aria-label="返回主屏">${BACK_SVG}</button>
       <div class="wt-city" id="wt-city">${escapeHtml(cityName || '…')}</div>
-      <button class="wt-refresh" id="wt-refresh" aria-label="刷新">${REFRESH_SVG}</button>
+      <div class="wt-right-group">
+        <button class="wt-plus" id="wt-plus" aria-label="城市管理">${PLUS_SVG}</button>
+        <button class="wt-refresh" id="wt-refresh" aria-label="刷新">${REFRESH_SVG}</button>
+      </div>
     </div>`;
 }
 
 function wireHeader(scope) {
+  const back = scope.querySelector('#wt-back');
+  if (back) back.onclick = () => { haptic(6); ctxRef && ctxRef.close(); };
   const plus = scope.querySelector('#wt-plus');
   if (plus) plus.onclick = () => openCityManage();
   const rf = scope.querySelector('#wt-refresh');

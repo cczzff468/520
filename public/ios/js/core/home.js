@@ -14,7 +14,15 @@ const DOCK_ORDER = ['wechat', 'browser', 'camera', 'music'];
 const LIVE_ICONS = ['clock', 'calendar'];
 const X_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
-const DEFAULT_LAYOUT = () => ({ grid: [...GRID_ORDER], dock: [...DOCK_ORDER], hidden: [] });
+const DEFAULT_LAYOUT = () => ({ grid: [...GRID_ORDER], dock: [...DOCK_ORDER], hidden: [], widgetIndex: 0 });
+
+/* DOM 位置互换（跨容器拖拽交换用） */
+function swapNodes(a, b) {
+  const marker = document.createComment('swap');
+  a.replaceWith(marker);
+  b.replaceWith(a);
+  marker.replaceWith(b);
+}
 
 export const Home = {
   _iconEls: {},
@@ -78,6 +86,7 @@ export const Home = {
       </div>
     </div>`;
     this.widget.onclick = () => { if (!this.editing) openApp('weather'); };
+    this._bindDrag(this.widget); // 编辑模式下小组件可拖拽换位
 
     this.renderGrid();
 
@@ -102,12 +111,15 @@ export const Home = {
     this.grid.querySelectorAll('.app-icon-cell, .home-widget').forEach(n => n.remove());
     this.dock.querySelectorAll('.app-icon-cell').forEach(n => n.remove());
     this._iconEls = {};
-    this.grid.appendChild(this.widget);
+    /* 小组件按持久化的插入位渲染（widgetIndex：前方图标数） */
+    const gridIds = this.layout.grid.filter(id => !this.layout.hidden.includes(id));
+    const wi = Math.min(Math.max(this.layout.widgetIndex || 0, 0), gridIds.length);
     /* 单个图标构建失败不影响其余图标渲染 */
-    this.layout.grid.filter(id => !this.layout.hidden.includes(id)).forEach(id => {
-      const cell = this.buildIcon(id);
-      if (cell) this.grid.appendChild(cell);
-    });
+    const appendIcon = (id) => { const c = this.buildIcon(id); if (c) this.grid.appendChild(c); };
+    let i = 0;
+    for (; i < wi && i < gridIds.length; i++) appendIcon(gridIds[i]);
+    this.grid.appendChild(this.widget);
+    for (; i < gridIds.length; i++) appendIcon(gridIds[i]);
     this.layout.dock.filter(id => !this.layout.hidden.includes(id)).forEach(id => {
       const cell = this.buildIcon(id);
       if (cell) this.dock.appendChild(cell);
@@ -149,7 +161,8 @@ export const Home = {
     return cell;
   },
 
-  /* ---------- 抖动编辑模式：拖动排序 + 删除 + 恢复默认 ---------- */
+  /* ---------- 抖动编辑模式：任意拖拽排序 + 删除 + 恢复默认 ----------
+     支持跨容器：grid↔dock 图标互换、小组件↔图标互换（小组件仅限 grid 内移动） */
   enterEdit() {
     if (this.editing) return;
     this.editing = true;
@@ -159,11 +172,11 @@ export const Home = {
     const cells = [...this.grid.querySelectorAll('.app-icon-cell'), ...this.dock.querySelectorAll('.app-icon-cell')];
     cells.forEach(cell => {
       cell.classList.add('jiggle');
-      cell.style.animationDelay = (Math.random() * 0.28).toFixed(2) + 's';
+      cell.style.animationDelay = (Math.random() * 0.24).toFixed(2) + 's';
       this._addDelButton(cell);
     });
     this.widget.classList.add('jiggle');
-    this.widget.style.animationDelay = '0.1s';
+    this.widget.style.animationDelay = '0.12s';
 
     this._editBar = el('div', 'home-edit-bar');
     this._editBar.innerHTML = `
@@ -224,13 +237,18 @@ export const Home = {
     shape.appendChild(btn);
   },
 
-  _bindDrag(cell) {
-    const container = () => (cell.parentElement === this.dock ? this.dock : this.grid);
-    cell.addEventListener('pointerdown', (e) => {
+  /* ---------- 拖拽排序（跨容器）：图标与小组件通用 ---------- */
+  _bindDrag(dragEl) {
+    const isWidget = dragEl === this.widget;
+    dragEl.addEventListener('pointerdown', (e) => {
       if (e.target.closest && e.target.closest('.icon-del')) return; // 删除按钮不拖拽
-      /* 鼠标显式捕获：无论是否已进入编辑模式，拖拽过程中 pointermove
-         始终派发到本格子（触摸天然隐式捕获，无需处理） */
-      if (e.pointerType === 'mouse') { try { cell.setPointerCapture(e.pointerId); } catch (err) { /* noop */ } }
+      /* 小组件长按也进入编辑模式（与图标一致） */
+      if (isWidget && !this.editing) {
+        clearTimeout(this._lp);
+        this._lp = setTimeout(() => this.enterEdit(), 550);
+      }
+      /* 鼠标显式捕获：拖拽过程中 pointermove 始终派发到本元素（触摸天然隐式捕获） */
+      if (e.pointerType === 'mouse') { try { dragEl.setPointerCapture(e.pointerId); } catch (err) { /* noop */ } }
       const startX = e.clientX, startY = e.clientY;
       let dragging = false;
       const onMove = (ev) => {
@@ -242,57 +260,87 @@ export const Home = {
         const dx = ev.clientX - startX, dy = ev.clientY - startY;
         if (!dragging && Math.hypot(dx, dy) > 10) {
           dragging = true;
-          cell.classList.add('dragging');
-          cell.style.animation = 'none'; // 拖拽中停止抖动
+          dragEl.classList.add('dragging');
+          dragEl.style.animation = 'none'; // 拖拽中停止抖动
         }
         if (!dragging) return;
-        cell.style.transform = `translate(${dx}px, ${dy}px) scale(1.08)`;
-        this._maybeReorder(cell, ev, container());
+        dragEl.style.transform = `translate(${dx}px, ${dy}px) scale(${isWidget ? 1.04 : 1.08})`;
+        const target = this._nearestCell(dragEl, ev.clientX, ev.clientY);
+        if (target && target !== dragEl) this._reorder(dragEl, target);
       };
       const onUp = () => {
-        cell.removeEventListener('pointermove', onMove);
-        cell.removeEventListener('pointerup', onUp);
-        cell.removeEventListener('pointercancel', onUp);
+        dragEl.removeEventListener('pointermove', onMove);
+        dragEl.removeEventListener('pointerup', onUp);
+        dragEl.removeEventListener('pointercancel', onUp);
+        clearTimeout(this._lp);
         if (dragging) {
-          cell.classList.remove('dragging');
-          cell.style.transform = '';
-          cell.style.animation = ''; // 恢复抖动
+          dragEl.classList.remove('dragging');
+          dragEl.style.transform = '';
+          dragEl.style.animation = ''; // 恢复抖动
           this._persistLayout();
           haptic(6);
         }
       };
-      cell.addEventListener('pointermove', onMove);
-      cell.addEventListener('pointerup', onUp);
-      cell.addEventListener('pointercancel', onUp);
+      dragEl.addEventListener('pointermove', onMove);
+      dragEl.addEventListener('pointerup', onUp);
+      dragEl.addEventListener('pointercancel', onUp);
     });
   },
 
-  _maybeReorder(dragCell, ev, container) {
-    const target = this._nearestCell(container, ev.clientX, ev.clientY, dragCell);
-    if (!target || target === dragCell) return;
-    const children = [...container.children];
-    const iDrag = children.indexOf(dragCell);
-    const iTarget = children.indexOf(target);
-    if (iDrag < 0 || iTarget < 0) return;
-    if (iDrag < iTarget) container.insertBefore(dragCell, target.nextSibling);
-    else container.insertBefore(dragCell, target);
+  /* 重排：同容器流式插入；跨容器插入/交换（dock 满员时互换；小组件仅限 grid） */
+  _reorder(dragEl, target) {
+    const selfIn = dragEl.parentElement;
+    const targetIn = target.parentElement;
+    if (selfIn === targetIn) {
+      const kids = [...selfIn.children];
+      const iDrag = kids.indexOf(dragEl), iTarget = kids.indexOf(target);
+      if (iDrag < 0 || iTarget < 0) return;
+      if (iDrag < iTarget) selfIn.insertBefore(dragEl, target.nextSibling);
+      else selfIn.insertBefore(dragEl, target);
+      return;
+    }
+    /* 小组件不跨容器（不可拖入 dock） */
+    if (dragEl === this.widget) return;
+    if (targetIn === this.dock) {
+      const dockIcons = this.dock.querySelectorAll('.app-icon-cell').length;
+      if (dockIcons < 4) this.dock.insertBefore(dragEl, target); // 有空位：插入
+      else swapNodes(dragEl, target); // 满员：互换（对方图标落到 grid）
+      return;
+    }
+    if (targetIn === this.grid) {
+      if (target === this.widget) {
+        /* dock 图标拖到小组件位：图标插入小组件前（小组件留在 grid，不进 dock） */
+        if (selfIn === this.dock) this.grid.insertBefore(dragEl, this.widget);
+        else swapNodes(dragEl, this.widget); // grid 图标与小组件互换
+      } else {
+        this.grid.insertBefore(dragEl, target);
+      }
+    }
   },
 
-  _nearestCell(container, x, y, exclude) {
+  /* 全屏最近可放置目标（含小组件与跨容器，排除自身） */
+  _nearestCell(dragEl, x, y, exclude) {
     let best = null, bestD = Infinity;
-    for (const c of container.children) {
-      if (c === exclude || c === this.widget || !c.classList.contains('app-icon-cell')) continue;
-      const r = c.getBoundingClientRect();
-      const dx = Math.max(r.left - x, 0, x - r.right);
-      const dy = Math.max(r.top - y, 0, y - r.bottom);
-      const d = Math.hypot(dx, dy);
-      if (d < bestD) { bestD = d; best = c; }
+    const pools = dragEl === this.widget ? [this.grid] : [this.grid, this.dock];
+    for (const container of pools) {
+      for (const c of container.children) {
+        if (c === dragEl || (c !== this.widget && !c.classList.contains('app-icon-cell'))) continue;
+        const r = c.getBoundingClientRect();
+        const dx = Math.max(r.left - x, 0, x - r.right);
+        const dy = Math.max(r.top - y, 0, y - r.bottom);
+        const d = Math.hypot(dx, dy);
+        if (d < bestD) { bestD = d; best = c; }
+      }
     }
-    return bestD < 130 ? best : null;
+    return bestD < 150 ? best : null;
   },
 
   _persistLayout() {
-    this.layout.grid = [...this.grid.querySelectorAll('.app-icon-cell')].map(c => c.dataset.app);
+    /* grid 子元素 = 图标 + 小组件（记录小组件插入位）；dock 仅图标 */
+    const gridKids = [...this.grid.children].filter(n => n.classList.contains('app-icon-cell') || n === this.widget);
+    const wi = gridKids.indexOf(this.widget);
+    this.layout.widgetIndex = wi >= 0 ? wi : 0;
+    this.layout.grid = gridKids.filter(n => n !== this.widget).map(c => c.dataset.app);
     this.layout.dock = [...this.dock.querySelectorAll('.app-icon-cell')].map(c => c.dataset.app);
     Settings.setQuiet('homeLayout', this.layout);
   },

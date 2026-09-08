@@ -5,7 +5,27 @@ import { Statusbar } from './statusbar.js';
 import { resetNavs, navBack } from './nav.js';
 
 const registry = {};
-let current = null; // { app, win, offNav }
+let current = null; // { app, win, content, offNav, offSb }
+
+/* 应用快照缓存：关闭应用时保存最终界面 DOM，供多任务切换器显示“实时界面”卡片。
+   克隆时清除 id（防双 id 冲突）与媒体元素（canvas/video 克隆后无内容） */
+export const Snapshots = {
+  _store: new Map(),
+  save(id, contentEl) {
+    try {
+      const clone = contentEl.cloneNode(true);
+      clone.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+      clone.querySelectorAll('canvas, video, audio, iframe').forEach(n => n.remove());
+      clone.style.pointerEvents = 'none';
+      this._store.set(id, clone);
+      if (this._store.size > 12) {
+        this._store.delete(this._store.keys().next().value); // 淘汰最旧
+      }
+    } catch (e) { /* 快照失败 → 切换器降级为图标卡片 */ }
+  },
+  get(id) { return this._store.get(id) || null; },
+  clear(id) { this._store.delete(id); },
+};
 
 export const Apps = {
   register(app) { registry[app.id] = app; },
@@ -19,10 +39,9 @@ const OWN_BACK_SEL = [
   '.nav-page:not(.leave) .nav-btn.chev', // 导航栏自带返回的子页面
   '.nav-page:not(.leave) .pl-back',      // 音乐播放器自带返回
   '.nav-page:not(.leave) #mo-back',      // 朋友圈自带返回
+  '.nav-page:not(.leave) [data-own-back]', // 通用：页面自带返回键（天气返回/扫一扫等）
   '#cp-back',                             // 指南针自带返回
   '#cam-back',                            // 相机自带返回
-  '#wt-plus',                             // 天气主页面（左上角加号，返回靠底部上滑手势）
-  '.nav-page:not(.leave) [data-own-back]', // 通用：页面自带返回键（如扫一扫）
 ].join(', ');
 
 export function openApp(id, opts) {
@@ -50,7 +69,6 @@ export function openApp(id, opts) {
   layer.appendChild(win);
   win.classList.add('anim-open');
   setTimeout(() => { win.classList.remove('anim-open'); win.style.transformOrigin = ''; }, 520);
-
   /* ---- 全局返回键：所有应用左上角常驻（毛玻璃圆钮，纯图标） ----
      点击优先级：应用自定义覆盖层返回 → 应用内子页面返回 → 关闭应用回主屏 */
   const backFab = el('button', 'app-back-fab' + (app.sbStyle === 'dark' ? ' on-dark' : ''));
@@ -77,7 +95,7 @@ export function openApp(id, opts) {
   /* 采样结果变化时同步返回键深浅变体 */
   const offSb = Bus.on('sb:style', ({ style }) => backFab.classList.toggle('on-dark', style === 'dark'));
 
-  current = { app, win, offNav, offSb };
+  current = { app, win, content, offNav, offSb };
 
   const ctx = {
     close: () => closeApp(),
@@ -97,10 +115,11 @@ export function openApp(id, opts) {
 
 export function closeApp() {
   if (!current) return;
-  const { app, win, offNav, offSb } = current;
+  const { app, win, content, offNav, offSb } = current;
   if (offNav) offNav();
   if (offSb) offSb();
   resetNavs();
+  Snapshots.save(app.id, content); // 先存快照再 unmount（防 unmount 清理 DOM）
   try { app.unmount && app.unmount(); } catch (e) { console.error('[unmount]', e); }
   win.classList.add('anim-close');
   setTimeout(() => { win.remove(); }, 400);
@@ -111,6 +130,9 @@ export function closeApp() {
 }
 
 export function isAppOpen() { return !!current; }
+
+/* 当前应用实时 DOM 根（切换器 live 卡片克隆用） */
+export function getLiveContent() { return current ? current.content : null; }
 
 /* 全局桥接（供相册等模块跳转使用，避免循环导入） */
 window.__openApp = openApp;

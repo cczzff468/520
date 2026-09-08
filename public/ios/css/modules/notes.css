@@ -94,8 +94,31 @@
 .nte-title { font-size: 17px; font-weight: 600; color: var(--text-2); }
 .nte-sub { font-size: 14px; }
 
+/* ---------- 导航栏毛玻璃椭圆按钮（列表页+号 / 编辑器完成） ---------- */
+.nav-btn.pill-btn{
+  min-width:34px; height:34px;
+  padding:0 13px;
+  border-radius:17px;
+  margin:0;
+  /* iOS 浅灰填充：浅色导航栏下可见；叠 blur 在深色/图片背景显毛玻璃 */
+  background:rgba(120,120,128,.14);
+  backdrop-filter:blur(14px) saturate(1.6);
+  -webkit-backdrop-filter:blur(14px) saturate(1.6);
+  box-shadow:inset 0 0 0 .5px rgba(120,120,128,.16), 0 3px 10px rgba(0,0,0,.08);
+  color:var(--accent);
+  display:flex; align-items:center; justify-content:center;
+  border:none;
+  transition:transform .18s var(--ease-ios, ease), background .18s ease;
+}
+.nav-btn.pill-btn:active{
+  transform:scale(.92);
+  background:color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.nav-btn.pill-btn .nt-done-btn{ font-weight:600; font-size:15.5px; padding:0 3px; }
+
 /* ---------- 编辑器 ---------- */
-.note-editor-body { padding: 0 18px 30px; }
+.note-editor-body { padding: 0 18px 12px; }
+.note-editor-body.has-fixed-toolbar { padding-bottom: 76px; }
 .note-title {
   width: 100%;
   font-size: 25px;
@@ -175,31 +198,32 @@
   font-weight: 700;
 }
 
-/* 工具栏：悬浮毛玻璃胶囊 */
+/* 工具栏：固定在页面底部（挂 pageEl，不随内容滚动） */
 .note-toolbar {
-  position: sticky;
-  bottom: 10px;
-  display: flex;
-  justify-content: center;
-  gap: 2px;
-  background: color-mix(in srgb, var(--nav-bg) 88%, transparent);
-  backdrop-filter: var(--blur-heavy);
-  -webkit-backdrop-filter: var(--blur-heavy);
-  border: .5px solid var(--sep);
-  border-radius: 20px;
-  padding: 6px 8px;
-  margin: 14px auto -6px;
-  width: fit-content;
-  max-width: 100%;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
-  overflow-x: auto;
-  scrollbar-width: none;
+  position:absolute;
+  left:50%; transform:translateX(-50%);
+  bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+  display:flex;
+  justify-content:center;
+  gap:2px;
+  background:color-mix(in srgb, var(--nav-bg) 88%, transparent);
+  backdrop-filter:var(--blur-heavy);
+  -webkit-backdrop-filter:var(--blur-heavy);
+  border:.5px solid var(--sep);
+  border-radius:20px;
+  padding:6px 8px;
+  width:fit-content;
+  max-width:calc(100% - 32px);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);
+  overflow-x:auto;
+  scrollbar-width:none;
+  z-index:5;
 }
 .note-toolbar::-webkit-scrollbar { display: none; }
 .note-toolbar button {
-  padding: 7px 11px;
-  border-radius: 13px;
-  font-size: 14.5px;
+  padding: 6px 8.5px;
+  border-radius: 12px;
+  font-size: 13px;
   color: var(--accent);
   flex: none;
   cursor: pointer;

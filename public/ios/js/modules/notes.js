@@ -29,7 +29,7 @@ export default {
 
     const page = nav.makePage({
       title: '备忘录',
-      right: [navBtn(PLUS_SVG, () => openEditor(null))],
+      right: [navBtn(PLUS_SVG, () => openEditor(null), 'pill-btn')],
       build(body) {
         body.classList.add('notes-body');
         body.innerHTML = `
@@ -171,31 +171,30 @@ function openEditor(note) {
     title: '',
     back: '备忘录',
     right: [
-      navBtn('<span class="nt-done-btn">完成</span>', () => page._save && page._save(false)),
-      navBtn(MORE_SVG, () => noteMenu(data)),
+      navBtn('<span class="nt-done-btn">完成</span>', () => page._save && page._save(false), 'pill-btn pill-text'),
     ],
-    build(body) {
+    build(body, pageEl) {
       body.classList.add('note-editor-body');
       body.innerHTML = `
         <input class="note-title" placeholder="标题" value="${escapeAttr(data.title || '')}">
-        <div class="note-meta">
-          <span class="nm-chip">${escapeHtml(data.category || '个人')}</span>
-          <span>${new Date(data.updatedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
-        <div class="note-editor" contenteditable="true" id="note-content"></div>
-        <div class="note-toolbar">
-          <button data-cmd="bold"><b>B</b></button>
-          <button data-cmd="italic"><i>I</i></button>
-          <button data-cmd="underline"><u>U</u></button>
-          <button data-cmd="insertUnorderedList">• 列表</button>
-          <button data-cmd="insertOrderedList">1. 列表</button>
-          <button data-cmd="todo" id="nb-todo">☑ 待办</button>
-        </div>`;
+        <div class="note-editor" contenteditable="true" id="note-content"></div>`;
+
+      /* 工具栏固定在页面底部（不随内容滚动，挂在 pageEl 上） */
+      const toolbar = el('div', 'note-toolbar');
+      toolbar.innerHTML = `
+        <button data-cmd="bold"><b>B</b></button>
+        <button data-cmd="italic"><i>I</i></button>
+        <button data-cmd="underline"><u>U</u></button>
+        <button data-cmd="insertUnorderedList">• 列表</button>
+        <button data-cmd="insertOrderedList">1. 列表</button>
+        <button data-cmd="todo" id="nb-todo">☑ 待办</button>`;
+      body.classList.add('has-fixed-toolbar');
+      pageEl.appendChild(toolbar);
 
       const editor = body.querySelector('#note-content');
       editor.innerHTML = data.content || '';
 
-      body.querySelectorAll('.note-toolbar button[data-cmd]').forEach(b => {
+      toolbar.querySelectorAll('button[data-cmd]').forEach(b => {
         b.onclick = (e) => {
           e.preventDefault();
           haptic(4);
