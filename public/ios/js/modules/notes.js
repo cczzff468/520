@@ -1,4 +1,4 @@
-/* ============ 备忘录（富文本 · iOS 风格时间分组列表） ============ */
+/* ============ 备忘录（新版 iOS 风格：卡片列表 + 底部格式栏 + 黄色主题） ============ */
 
 import { el, uid, Bus, haptic, fmtSmartTime, downloadBlob, downloadJSON } from '../core/utils.js';
 import { DB } from '../core/db.js';
@@ -9,9 +9,17 @@ import { Apps as AppIcons } from '../core/icons.js';
 let root = null;
 let nav = null;
 
-const PLUS_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 const MORE_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>';
 const SEARCH_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>';
+/* 图钉（置顶） */
+const PIN_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-label="已置顶"><path d="M9.2 3h5.6l-.8 5.6 3.5 4.2H6.5l3.5-4.2z"/><rect x="11.1" y="12.8" width="1.8" height="8" rx=".9"/></svg>';
+/* 待办（圆圈打勾） */
+const TODO_SVG = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.1"/><path d="M8.4 12.4l2.5 2.5 4.8-5.6"/></svg>';
+/* 新建（方框铅笔） */
+const COMPOSE_SVG = '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.6V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2h7.6"/><path d="M17.6 3.4a1.94 1.94 0 0 1 2.75 2.75L13 13.5l-3.7.9.9-3.7z"/></svg>';
+/* 无序/有序列表 */
+const UL_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9.5 6h10.5M9.5 12h10.5M9.5 18h10.5"/><circle cx="4.6" cy="6" r="1.35" fill="currentColor" stroke="none"/><circle cx="4.6" cy="12" r="1.35" fill="currentColor" stroke="none"/><circle cx="4.6" cy="18" r="1.35" fill="currentColor" stroke="none"/></svg>';
+const OL_SVG = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M3.4 4.9l1.3-.7v3.6" stroke-width="1.6"/><path d="M3.1 15.9c.4-.8 1.7-.9 2.1 0 .3.7-.2 1.2-.9 1.7l-1.3 1h2.4" stroke-width="1.6"/><path d="M3 10.8h2.2l-1.1 2.4" stroke-width="1.6"/></svg>';
 
 export default {
   id: 'notes',
@@ -21,6 +29,7 @@ export default {
 
   mount(rootEl, ctx) {
     root = rootEl;
+    root.classList.add('nt-app'); /* 黄色主题作用域（新版 iOS 备忘录强调色） */
     root.innerHTML = '';
     const overlay = el('div', '');
     overlay.style.cssText = 'position:absolute;inset:0;z-index:10;';
@@ -29,21 +38,27 @@ export default {
 
     const page = nav.makePage({
       title: '备忘录',
-      right: [navBtn(PLUS_SVG, () => openEditor(null), 'pill-btn')],
-      build(body) {
-        body.classList.add('notes-body');
+      right: [navBtn(MORE_SVG, async () => {
+        const v = await actionSheet([
+          { text: '导出全部备忘录（JSON 备份）', value: 'exp' },
+        ]);
+        if (v === 'exp') exportAllNotes();
+      }, 'pill-btn')],
+      build(body, pageEl) {
+        body.classList.add('notes-body', 'has-fixed-toolbar');
         body.innerHTML = `
+          <div class="searchbar nt-search">
+            ${SEARCH_SVG}
+            <input placeholder="搜索备忘录" id="nt-search">
+          </div>
           <div class="nt-chips" id="nt-filter">
             <button data-c="全部" class="on">全部</button>
             <button data-c="个人">个人</button>
             <button data-c="工作">工作</button>
             <button data-c="置顶">置顶</button>
           </div>
-          <div class="searchbar nt-search">
-            ${SEARCH_SVG}
-            <input placeholder="搜索备忘录" id="nt-search">
-          </div>
           <div id="nt-list"></div>`;
+
         body.querySelector('#nt-filter').querySelectorAll('button').forEach(b => {
           b.onclick = () => {
             haptic(4);
@@ -53,13 +68,26 @@ export default {
           };
         });
         body.querySelector('#nt-search').addEventListener('input', () => loadList());
+
+        /* 底部工具栏（iOS 格式栏质感）：左=新建待办，右=新建备忘录 */
+        const bar = el('div', 'note-toolbar nt-bar');
+        bar.innerHTML = `
+          <button class="ntb" id="ntb-todo" aria-label="新建待办备忘录">${TODO_SVG}</button>
+          <i class="tb-sep"></i>
+          <button class="ntb ntb-compose" id="ntb-new" aria-label="新建备忘录">${COMPOSE_SVG}</button>`;
+        pageEl.appendChild(bar);
+        bar.querySelector('#ntb-new').onclick = () => { haptic(4); openEditor(null); };
+        bar.querySelector('#ntb-todo').onclick = () => { haptic(4); openEditor(null, { todo: true }); };
+
         loadList();
       },
     });
     nav.setRoot(page);
   },
 
-  unmount() { },
+  unmount() {
+    if (root) root.classList.remove('nt-app');
+  },
 };
 
 /* ---------- 时间分组（iOS 备忘录列表风格） ---------- */
@@ -95,7 +123,7 @@ async function loadList() {
       <div class="nt-empty">
         <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2.6"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4.5"/></svg>
         <div class="nte-title">没有备忘录</div>
-        <div class="nte-sub">点右上角 + 新建一条</div>
+        <div class="nte-sub">点底部的铅笔按钮新建一条</div>
       </div>`;
     return;
   }
@@ -108,11 +136,11 @@ async function loadList() {
     arr.forEach(n => {
       const row = el('div', 'row note-row');
       row.innerHTML = `
-        <div class="row-label">
-          <div class="nr-title"><span class="ellipsis">${escapeHtml(n.title || '新备忘录')}</span>${n.pinned ? '<span class="nr-pin">📌</span>' : ''}</div>
-          <div class="nr-preview clamp2">${escapeHtml(stripHtml(n.content)).slice(0, 60) || '无附加文本'}</div>
+        <div class="nr-line1">
+          <div class="nr-title"><span class="ellipsis">${escapeHtml(n.title || '新备忘录')}</span>${n.pinned ? `<span class="nr-pin">${PIN_SVG}</span>` : ''}</div>
+          <div class="nr-time">${fmtSmartTime(n.updatedAt)}</div>
         </div>
-        <div class="nr-time">${fmtSmartTime(n.updatedAt)}</div>`;
+        <div class="nr-preview clamp2">${escapeHtml(stripHtml(n.content)).slice(0, 64) || '无附加文本'}</div>`;
       row.onclick = () => openEditor(n);
       row.oncontextmenu = (e) => { e.preventDefault(); noteMenu(n); };
       let t;
@@ -162,8 +190,16 @@ async function noteMenu(n) {
   loadList();
 }
 
+/* 备忘录日期行（iOS 编辑器标题下的小字日期） */
+function fmtNoteDate(ts) {
+  const d = new Date(ts || Date.now());
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${hh}:${mm}`;
+}
+
 /* ============ 编辑器 ============ */
-function openEditor(note) {
+function openEditor(note, opts = {}) {
   const isNew = !note;
   const data = note || { id: uid('nt'), title: '', content: '', category: '个人', pinned: false, updatedAt: Date.now() };
 
@@ -174,27 +210,28 @@ function openEditor(note) {
       navBtn('<span class="nt-done-btn">完成</span>', () => page._save && page._save(false), 'pill-btn pill-text'),
     ],
     build(body, pageEl) {
-      body.classList.add('note-editor-body');
+      body.classList.add('note-editor-body', 'has-fixed-toolbar', 'nt-app');
       body.innerHTML = `
         <input class="note-title" placeholder="标题" value="${escapeAttr(data.title || '')}">
+        <div class="note-date">${fmtNoteDate(data.updatedAt)}</div>
         <div class="note-editor" contenteditable="true" id="note-content"></div>`;
 
-      /* 工具栏固定在页面底部（不随内容滚动，挂在 pageEl 上） */
+      /* 工具栏固定在页面底部（iOS 格式栏：待办 | B I U | 列表） */
       const toolbar = el('div', 'note-toolbar');
       toolbar.innerHTML = `
+        <button data-cmd="todo" id="nb-todo" aria-label="待办">${TODO_SVG}</button>
+        <i class="tb-sep"></i>
         <button data-cmd="bold" aria-label="粗体"><b>B</b></button>
         <button data-cmd="italic" aria-label="斜体"><i>I</i></button>
         <button data-cmd="underline" aria-label="下划线"><u>U</u></button>
         <i class="tb-sep"></i>
-        <button data-cmd="insertUnorderedList" aria-label="无序列表">• 列表</button>
-        <button data-cmd="insertOrderedList" aria-label="有序列表">1. 列表</button>
-        <i class="tb-sep"></i>
-        <button data-cmd="todo" id="nb-todo" aria-label="待办">☑ 待办</button>`;
-      body.classList.add('has-fixed-toolbar');
+        <button data-cmd="insertUnorderedList" aria-label="无序列表">${UL_SVG}</button>
+        <button data-cmd="insertOrderedList" aria-label="有序列表">${OL_SVG}</button>`;
       pageEl.appendChild(toolbar);
 
       const editor = body.querySelector('#note-content');
       editor.innerHTML = data.content || '';
+      bindTodoCircles(editor); /* 打开旧笔记时重绑待办圆圈 */
 
       toolbar.querySelectorAll('button[data-cmd]').forEach(b => {
         b.onclick = (e) => {
@@ -205,6 +242,11 @@ function openEditor(note) {
           else document.execCommand(b.dataset.cmd, false, null);
         };
       });
+
+      /* 新建待办备忘录：预置一条待办 */
+      if (opts.todo && isNew && !editor.textContent.trim()) {
+        setTimeout(() => insertTodo(editor), 60);
+      }
 
       /* 显式保存：仅点「完成」或返回时确认（不再边打字边自动入库） */
       let dirty = false;

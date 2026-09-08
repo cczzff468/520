@@ -118,7 +118,7 @@ export const Statusbar = {
     // 填充条基于内框宽度（左内缩1px + 右预留1px）
     this._fillNode.style.width = `calc((100% - 2px) * ${Math.max(4, pct) / 100})`;
     // 百分比常显：iOS 真实行为，未获取到系统电量时展示满电 100
-    this._numNode.textContent = pct;
+    this._numNode.textContent = pct + '%';
     this._battNode.classList.toggle('charging', charging);
     this._battNode.classList.toggle('low', supported && !charging && pct <= 20);
     Bus.emit('battery:updated', { pct, charging, supported });

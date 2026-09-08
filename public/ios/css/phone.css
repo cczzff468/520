@@ -260,6 +260,13 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   border-radius:16px;
   cursor:grabbing;
 }
+/* 拖拽中不触发按压缩小/变淡（:active 会全程生效，图标会一直缩着） */
+.app-icon-cell.dragging .app-icon-shape,
+.app-icon-cell.dragging:active .app-icon-shape{
+  transform:none;
+  opacity:1;
+}
+.home-widget.dragging:active{ transform:none; }
 /* 删除角标：挂在 cell 上（shape 的 overflow:hidden 会把探出部分裁掉） */
 .icon-del{
   position:absolute; top:-7px; left:calc(50% - 38px);
@@ -430,11 +437,24 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 #lock.light-ui .lock-quick button:active{ background:#DCDCE1; }
 
 /* ---------- 多任务切换器 ---------- */
-/* 纯暗色半透明遮罩（无毛玻璃泛白）：卡片外的壁纸直接透出 */
+/* 背景为当前壁纸重度模糊 + 暗色遮罩（.ts-bg/.ts-shade），暗色兜底 */
 #task-switcher{
   position:absolute; inset:0; z-index:860;
   display:none; flex-direction:column;
-  background:rgba(10,10,14,.48);
+  background:rgba(10,10,14,.62);
+  overflow:hidden;
+}
+/* 壁纸背景层：外扩 80px 防 blur 边缘露底 */
+.ts-bg{
+  position:absolute; inset:-80px; z-index:0;
+  background:center/cover no-repeat #101014;
+  filter:blur(34px) saturate(1.1);
+  pointer-events:none;
+}
+.ts-shade{
+  position:absolute; inset:0; z-index:0;
+  background:linear-gradient(180deg, rgba(10,10,16,.5), rgba(10,10,16,.34) 42%, rgba(8,8,12,.56));
+  pointer-events:none;
 }
 #task-switcher.show{ display:flex; animation:fadeIn .22s ease both; }
 #task-switcher.closing{ animation:fadeOut .2s ease both; }
@@ -445,19 +465,25 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   padding:0 26px;
   scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch;
+  position:relative; z-index:1; /* 位于壁纸背景层之上 */
 }
 .ts-rail::-webkit-scrollbar{ display:none; }
-.ts-card{
+/* 卡片+脚注整组：名称在卡片下方 */
+.ts-item{
   flex:none;
-  width:70%;
-  max-height:88%;
+  width:80%;
+  height:100%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  scroll-snap-align:center;
+}
+.ts-card{
+  width:100%;
+  max-height:calc(100% - 46px); /* 给下方脚注留位 */
   aspect-ratio:0.44; /* 更接近整机比例：上下显著更高 */
   border-radius:32px;
-  scroll-snap-align:center;
   display:flex; flex-direction:column;
   position:relative;
   background:linear-gradient(165deg,#3A3A40 0%,#222228 55%,#17171C 100%);
-  border:.5px solid rgba(255,255,255,.14);
   box-shadow:0 22px 52px rgba(0,0,0,.55);
   cursor:pointer;
   overflow:hidden;
@@ -468,7 +494,7 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   to{ transform:translateY(0) scale(1); opacity:1; }
 }
 .ts-card:active{ transform:scale(.98); }
-.ts-card.cur{ border:2px solid rgba(255,255,255,.9); box-shadow:0 18px 44px rgba(0,0,0,.5), 0 0 0 4px rgba(255,255,255,.12); }
+.ts-card.cur{ box-shadow:0 26px 58px rgba(0,0,0,.62), 0 6px 22px rgba(0,0,0,.4); }
 .ts-card.closing{ animation:tsCardClose .26s var(--ease-ios) both; }
 @keyframes tsCardClose{ to{ transform:translateY(-110px) scale(.55); opacity:0; } }
 .ts-badge{
@@ -502,17 +528,21 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 .ts-snap .app-window,
 .ts-snap .app-window *{ pointer-events:none; }
 .ts-snap .app-window .app-back-fab{ display:none; }
-/* 底部脚注：小图标 + 应用名（实色暗条，避免泛白玻璃） */
+/* 卡片下方脚注：小图标 + 应用名（透明底，浮在模糊壁纸上） */
 .ts-foot{
   flex:none;
-  height:54px;
-  display:flex; align-items:center; justify-content:center; gap:8px;
-  background:rgba(16,16,20,.74);
-  box-shadow:inset 0 .5px 0 rgba(255,255,255,.08);
+  height:36px;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  padding:0 12px;
+  max-width:100%;
 }
-.ts-mini{ width:25px; height:25px; border-radius:6.5px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.4); }
+.ts-mini{ width:22px; height:22px; border-radius:5.5px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.45); flex:none; }
 .ts-mini svg{ width:100%; height:100%; display:block; }
-.ts-name{ color:#fff; font-size:14px; font-weight:600; text-shadow:0 1px 5px rgba(0,0,0,.45); }
+.ts-name{
+  color:#fff; font-size:14px; font-weight:600;
+  text-shadow:0 1px 5px rgba(0,0,0,.6);
+  max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
 /* 无快照占位卡片 */
 .ts-placeholder{
   flex:1;
@@ -522,9 +552,11 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 .ts-icon svg{ width:100%; height:100%; display:block; }
 .ts-hint{
   text-align:center; flex:none;
-  color:rgba(255,255,255,.55);
+  position:relative; z-index:1; /* 位于壁纸背景层之上 */
+  color:rgba(255,255,255,.6);
   font-size:12px;
   padding:14px 0 calc(30px + 14px);
+  text-shadow:0 1px 4px rgba(0,0,0,.5);
 }
 
 /* ---------- Toast ---------- */

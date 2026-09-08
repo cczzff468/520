@@ -236,7 +236,11 @@ export const Home = {
     cell.appendChild(btn);
   },
 
-  /* ---------- 拖拽排序（跨容器）：图标与小组件通用 ---------- */
+  /* ---------- 拖拽排序（跨容器）：图标与小组件通用 ----------
+     动画体系：①拖拽中元素始终粘在指针下（DOM 换位后增量校正 transform）
+              ②被挤开的图标 FLIP 平滑滑动让位（不再是瞬移）
+              ③换位滞回 26px（防止指针在两格之间反复横跳导致图标闪烁）
+              ④松手后弹性回位（从拖拽位过渡回布局位） */
   _bindDrag(dragEl) {
     const isWidget = dragEl === this.widget;
     dragEl.addEventListener('pointerdown', (e) => {
@@ -249,7 +253,14 @@ export const Home = {
       /* 鼠标显式捕获：拖拽过程中 pointermove 始终派发到本元素（触摸天然隐式捕获） */
       if (e.pointerType === 'mouse') { try { dragEl.setPointerCapture(e.pointerId); } catch (err) { /* noop */ } }
       const startX = e.clientX, startY = e.clientY;
+      const LIFT = isWidget ? 1.04 : 1.09; // 拖拽放大
       let dragging = false;
+      let grabX = 0, grabY = 0;   // 指针在元素内的抓取偏移
+      let tx = 0, ty = 0;         // 当前累计 translate
+      let lastRx = -1e9, lastRy = -1e9; // 上次换位时指针位置（滞回基准）
+
+      const applyT = () => { dragEl.style.transform = `translate(${tx}px, ${ty}px) scale(${LIFT})`; };
+
       const onMove = (ev) => {
         if (!this.editing) {
           /* 长按未完成时大幅移动 → 取消长按（iOS 行为） */
@@ -261,21 +272,57 @@ export const Home = {
           dragging = true;
           dragEl.classList.add('dragging');
           dragEl.style.animation = 'none'; // 拖拽中停止抖动
+          dragEl.style.transition = 'none'; // 防残留过渡干扰跟手
+          const r = dragEl.getBoundingClientRect();
+          grabX = startX - r.left; grabY = startY - r.top;
+          tx = ty = 0;
+          applyT();
         }
         if (!dragging) return;
-        dragEl.style.transform = `translate(${dx}px, ${dy}px) scale(${isWidget ? 1.04 : 1.08})`;
+        /* 期望视觉左上角 = 指针 - 抓取偏移；逐帧增量校正：
+           DOM 换位改变布局位置后，校正量自动把元素拉回指针下（不跳变） */
+        const wantL = ev.clientX - grabX, wantT = ev.clientY - grabY;
+        let r = dragEl.getBoundingClientRect();
+        tx += wantL - r.left; ty += wantT - r.top;
+        applyT();
+        /* 换位滞回：上次换位后指针需再移动 ≥26px（避免相邻格反复换位闪烁） */
+        if (Math.hypot(ev.clientX - lastRx, ev.clientY - lastRy) < 26) return;
         const target = this._nearestCell(dragEl, ev.clientX, ev.clientY);
-        if (target && target !== dragEl) this._reorder(dragEl, target);
+        if (target && target !== dragEl) {
+          const changed = this._reorder(dragEl, target, ev.clientX, ev.clientY);
+          if (changed) { lastRx = ev.clientX; lastRy = ev.clientY; } /* 仅真换位才更新滞回基准（无操作不占用额度） */
+          /* 换位后布局基点已变：立即再次校正，指针下零跳变 */
+          r = dragEl.getBoundingClientRect();
+          tx += wantL - r.left; ty += wantT - r.top;
+          applyT();
+        }
       };
+
       const onUp = () => {
         dragEl.removeEventListener('pointermove', onMove);
         dragEl.removeEventListener('pointerup', onUp);
         dragEl.removeEventListener('pointercancel', onUp);
         clearTimeout(this._lp);
         if (dragging) {
-          dragEl.classList.remove('dragging');
+          /* 弹性回位：固化当前拖拽 transform → 过渡回 0（带回弹曲线） */
+          dragEl.style.animation = 'none';
+          dragEl.style.transition = 'none';
+          applyT();
+          void dragEl.offsetWidth; // 强制回流，确保起始态生效
+          dragEl.style.transition = 'transform .38s cubic-bezier(.28,1.18,.4,1)';
           dragEl.style.transform = '';
-          dragEl.style.animation = ''; // 恢复抖动
+          const finish = () => {
+            dragEl.style.transition = '';
+            dragEl.style.animation = ''; // 恢复抖动
+            dragEl.classList.remove('dragging');
+          };
+          setTimeout(finish, 420); // 超时兜底
+          dragEl.addEventListener('transitionend', function done(e) {
+            /* 仅认元素自身 transform 过渡（子元素过渡冒泡不算） */
+            if (e.target !== dragEl || e.propertyName !== 'transform') return;
+            dragEl.removeEventListener('transitionend', done);
+            finish();
+          });
           this._persistLayout();
           haptic(6);
         }
@@ -286,25 +333,83 @@ export const Home = {
     });
   },
 
-  /* 重排：同容器流式插入；跨容器插入/交换（dock 满员时互换；小组件仅限 grid） */
-  _reorder(dragEl, target) {
+  /* FLIP：容器内图标换位时，被挤开的图标从旧位置平滑滑到新位置
+     skipEl = 正在拖拽的元素（其位置由指针跟随逻辑管理，不可被 FLIP 覆盖） */
+  _withFlip(mutate, skipEl) {
+    const cells = [];
+    [this.grid, this.dock].forEach(c => {
+      if (!c) return;
+      c.querySelectorAll(':scope > .app-icon-cell, :scope > .home-widget').forEach(n => cells.push(n));
+    });
+    const before = new Map();
+    cells.forEach(c => { const r = c.getBoundingClientRect(); before.set(c, { l: r.left, t: r.top }); });
+    const changed = mutate();
+    if (changed !== false) {
+      cells.forEach(c => {
+        if (c === skipEl) return; /* 拖拽元素不参与 FLIP（transform 由拖拽控制） */
+        const b = before.get(c);
+        const r = c.getBoundingClientRect();
+        const dx = b.l - r.left, dy = b.t - r.top;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+        /* 抖动动画的 transform 会盖掉内联 transform → FLIP 期间先暂停抖动 */
+        c.style.animation = 'none';
+        c.style.transition = 'none';
+        c.style.transform = `translate(${dx}px, ${dy}px)`;
+        void c.offsetWidth;
+        requestAnimationFrame(() => {
+          c.style.transition = 'transform .3s cubic-bezier(.32,.72,0,1)';
+          c.style.transform = '';
+          const restore = () => { c.style.transition = ''; c.style.animation = ''; };
+          c.addEventListener('transitionend', function done(e) {
+            /* 仅认元素自身 transform 过渡（子元素过渡冒泡不算） */
+            if (e.target !== c || e.propertyName !== 'transform') return;
+            c.removeEventListener('transitionend', done);
+            restore();
+          });
+          setTimeout(restore, 340); // 超时兜底
+        });
+      });
+    }
+    return changed !== false;
+  },
+
+  /* 重排：同容器流式插入；跨容器插入/交换（dock 满员时互换；小组件仅限 grid）
+     返回 true=DOM 真实变化（用于拖拽滞回基准更新） */
+  _reorder(dragEl, target, px, py) {
+    return this._withFlip(() => this._reorderNow(dragEl, target, px, py), dragEl);
+  },
+
+  _reorderNow(dragEl, target, px, py) {
     const selfIn = dragEl.parentElement;
     const targetIn = target.parentElement;
     if (selfIn === targetIn) {
-      const kids = [...selfIn.children];
-      const iDrag = kids.indexOf(dragEl), iTarget = kids.indexOf(target);
-      if (iDrag < 0 || iTarget < 0) return;
-      if (iDrag < iTarget) selfIn.insertBefore(dragEl, target.nextSibling);
-      else selfIn.insertBefore(dragEl, target);
-      return;
+      /* 同容器：指针越过哪个格子的中心，就插入其前后（行优先阅读序）。
+         以指针位置而非索引比较 → 插入后指针仍在原相对位置，不会来回翻转 */
+      const kids = [...selfIn.children].filter(c => c !== dragEl
+        && (c.classList.contains('app-icon-cell') || c === this.widget));
+      let k = kids.length;
+      for (let i = 0; i < kids.length; i++) {
+        const kr = kids[i].getBoundingClientRect();
+        const sameRow = Math.abs((kr.top + kr.height / 2) - py) < kr.height * 0.6;
+        const before = sameRow ? (px < kr.left + kr.width / 2) : (py < kr.top + kr.height / 2);
+        if (before) { k = i; break; }
+      }
+      const ref = k < kids.length ? kids[k] : null;
+      if (dragEl.nextSibling === ref) return false; /* 已在目标位：无操作 */
+      selfIn.insertBefore(dragEl, ref);
+      return true;
     }
     /* 小组件不跨容器（不可拖入 dock） */
-    if (dragEl === this.widget) return;
+    if (dragEl === this.widget) return false;
     if (targetIn === this.dock) {
       const dockIcons = this.dock.querySelectorAll('.app-icon-cell').length;
-      if (dockIcons < 4) this.dock.insertBefore(dragEl, target); // 有空位：插入
-      else swapNodes(dragEl, target); // 满员：互换（对方图标落到 grid）
-      return;
+      if (dockIcons < 4) {
+        if (dragEl.nextElementSibling === target && dragEl.parentElement === this.dock) return false;
+        this.dock.insertBefore(dragEl, target); // 有空位：插入
+      } else {
+        swapNodes(dragEl, target); // 满员：互换（对方图标落到 grid）
+      }
+      return true;
     }
     if (targetIn === this.grid) {
       if (target === this.widget) {
@@ -314,7 +419,9 @@ export const Home = {
       } else {
         this.grid.insertBefore(dragEl, target);
       }
+      return true;
     }
+    return false;
   },
 
   /* 全屏最近可放置目标（含小组件与跨容器，排除自身） */

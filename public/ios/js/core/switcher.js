@@ -5,6 +5,7 @@ import { el, haptic, Bus, onSwipe } from './utils.js';
 import { Apps as Registry, openApp, closeApp, isAppOpen, getLiveContent, Snapshots } from './applayer.js';
 import { Apps as AppIcons } from './icons.js';
 import { Statusbar } from './statusbar.js';
+import { wallpaperCSS } from './wallpapers.js';
 
 const MAX_RECENTS = 10;
 const HOME_ZONE = 40; // 屏幕底部 40px 手势区
@@ -72,6 +73,10 @@ export const Switcher = {
     }
 
     this._el.innerHTML = '';
+    /* 背景：当前主屏壁纸重度模糊 + 暗色遮罩（iOS 切换器质感） */
+    const bg = el('div', 'ts-bg');
+    const shade = el('div', 'ts-shade');
+    this._applySwitcherWallpaper(bg);
     this._rail = el('div', 'ts-rail');
     const list = this._visibleRecents();
     const curId = Registry.currentId();
@@ -79,6 +84,8 @@ export const Switcher = {
     list.forEach((id, i) => {
       const app = Registry.get(id);
       if (!app) return;
+      /* ts-item = 卡片 + 下方脚注（小图标+应用名，iOS 卡片下签名样式） */
+      const item = el('div', 'ts-item');
       const card = el('div', 'ts-card' + (id === curId ? ' cur' : ''));
       card.dataset.app = id;
       /* 卡片内容来源：
@@ -95,14 +102,10 @@ export const Switcher = {
       }
 
       if (liveWin || snap) {
-        /* 实时界面卡片：缩放的界面 + 底部脚注（小图标+名称） */
+        /* 实时界面卡片：缩放的界面（名称在卡片下方脚注） */
         card.innerHTML = `
           ${id === curId ? '<span class="ts-badge">正在使用</span>' : ''}
-          <div class="ts-snap-wrap"><div class="ts-snap"></div></div>
-          <div class="ts-foot">
-            <div class="ts-mini">${AppIcons[id]()}</div>
-            <div class="ts-name">${app.name}</div>
-          </div>`;
+          <div class="ts-snap-wrap"><div class="ts-snap"></div></div>`;
         const snapHost = card.querySelector('.ts-snap');
         if (liveWin) {
           snapHost.appendChild(liveWin); // 搬入真实窗口：计时器/音频/动画持续运行
@@ -116,14 +119,20 @@ export const Switcher = {
           snapHost.style.transform = `scale(${(w / 393).toFixed(4)})`;
         });
       } else {
-        /* 无快照占位卡片（渐变底+图标+名称） */
+        /* 无快照占位卡片（图标居中，名称在下方脚注） */
         card.innerHTML = `
           ${id === curId ? '<span class="ts-badge">正在使用</span>' : ''}
           <div class="ts-placeholder">
             <div class="ts-icon">${AppIcons[id]()}</div>
-            <div class="ts-name">${app.name}</div>
           </div>`;
       }
+      /* 卡片下方脚注：小图标 + 应用名 */
+      const foot = el('div', 'ts-foot');
+      foot.innerHTML = `
+        <div class="ts-mini">${AppIcons[id]()}</div>
+        <div class="ts-name">${app.name}</div>`;
+      item.append(card, foot);
+
       /* 入场 stagger */
       card.style.animationDelay = (i * 45).toFixed(0) + 'ms';
       card.classList.add('enter');
@@ -152,26 +161,48 @@ export const Switcher = {
             this._recents = this._recents.filter(x => x !== id);
             Snapshots.clear(id); // 快照一并清理
             if (id === Registry.currentId()) { this._restoreLiveWindow(); closeApp(); }
-            card.remove();
+            item.remove();
             if (!this._visibleRecents().length) this.close();
           };
           setTimeout(remove, 240);
         },
       });
-      this._rail.appendChild(card);
+      this._rail.appendChild(item);
       /* 初始滚动定位到当前应用（或第一张） */
       requestAnimationFrame(() => {
         if (id === curId || (!curId && i === 0)) {
-          this._rail.scrollTo({ left: card.offsetLeft - (this._rail.clientWidth - card.offsetWidth) / 2, behavior: 'auto' });
+          const r = card.getBoundingClientRect();
+          const rr = this._rail.getBoundingClientRect();
+          this._rail.scrollTo({ left: this._rail.scrollLeft + (r.left - rr.left) - (rr.width - r.width) / 2, behavior: 'auto' });
         }
       });
     });
 
     const hint = el('div', 'ts-hint');
     hint.textContent = '左右滑动切换 · 上滑卡片关闭 · 点击空白返回';
-    this._el.append(this._rail, hint);
+    this._el.append(bg, shade, this._rail, hint);
     this._el.classList.add('show');
     Statusbar.setStyle('dark');
+  },
+
+  /* 背景 = 当前主屏壁纸（同步读 #wallpaper-home 已应用的样式；取不到再回退异步读库） */
+  _applySwitcherWallpaper(bg) {
+    try {
+      const wp = document.getElementById('wallpaper-home');
+      const b = wp ? getComputedStyle(wp).backgroundImage : 'none';
+      if (wp && b && b !== 'none') {
+        bg.style.backgroundImage = b;
+        bg.style.backgroundSize = 'cover';
+        bg.style.backgroundPosition = 'center';
+        return;
+      }
+    } catch (e) { /* 回退异步 */ }
+    wallpaperCSS().then(s => {
+      if (bg.isConnected) {
+        bg.style.background = s.background;
+        bg.style.backgroundColor = '#111';
+      }
+    }).catch(() => { /* 保持暗底 */ });
   },
 
   _visibleRecents() {
