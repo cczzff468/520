@@ -485,6 +485,7 @@ async function renderIconPage(body) {
         return `<div class="th-ic-cell" data-ic="${id}">
           <div class="th-ic-sq${ov ? ' custom' : ''}">${ov ? `<img src="${ov}" alt="">` : AppIcons[id]()}${ov ? `<span class="th-ic-badge">${CHECK_SVG}</span>` : ''}</div>
           <div class="th-ic-name">${escapeHtml(app ? app.name : id)}</div>
+          ${ov ? `<button class="th-ic-restore" type="button" data-ic="${id}">恢复默认</button>` : ''}
         </div>`;
       }).join('')}
     </div>
@@ -493,6 +494,22 @@ async function renderIconPage(body) {
 
   body.querySelectorAll('.th-ic-cell').forEach(cell => {
     cell.onclick = () => iconActions(body, cell.dataset.ic, ovs);
+  });
+  /* 已自定义图标：名称下方「恢复默认」快捷钮（不弹 Sheet，一键还原） */
+  body.querySelectorAll('.th-ic-restore').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation(); // 防止冒泡触发整格点击（弹操作Sheet）
+      const id = btn.dataset.ic;
+      const next = { ...(await Settings.load('iconOverrides', {}) || {}) };
+      if (!next[id]) return;
+      delete next[id];
+      await Settings.set('iconOverrides', next);
+      Bus.emit('icons:changed');
+      hapticLite();
+      renderIconPage(body);
+      renderIconStrip();
+      toast('已恢复默认图标');
+    };
   });
   const resetBtn = body.querySelector('#th-ic-resetall');
   if (resetBtn) resetBtn.onclick = async () => {

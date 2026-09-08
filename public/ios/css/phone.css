@@ -445,6 +445,7 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 .pp-overlay{
   position:absolute; inset:0; z-index:880;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding-top:24px; /* 密码盘整体下移一点点（用户反馈） */
   background:rgba(8,8,12,.42);
   backdrop-filter:blur(30px) saturate(1.15);
   -webkit-backdrop-filter:blur(30px) saturate(1.15);
@@ -513,7 +514,7 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 }
 .pp-del:active{ opacity:.45; }
 .pp-cancel{
-  margin-top:36px;
+  margin-top:50px;
   background:none; border:none;
   color:rgba(255,255,255,.85);
   font-size:16px; font-family:inherit;
@@ -522,7 +523,7 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 .pp-cancel:active{ opacity:.5; }
 /* 忘记密码（取消键下方，仅锁屏验证模式显示） */
 .pp-forgot{
-  margin-top:16px;
+  margin-top:22px;
   background:none; border:none;
   color:rgba(255,255,255,.52);
   font-size:12.5px; font-family:inherit;

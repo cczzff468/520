@@ -519,10 +519,10 @@ html[data-theme="dark"] .pub-submit:disabled { background: #3a3a3c; }
 .th-ic-head{ display:flex; align-items:center; gap:11px; }
 .th-ic-head-icon{
   width:40px; height:40px; border-radius:10.5px; flex:none;
-  background:linear-gradient(135deg,#5E5CE6,#BF5AF2);
+  background:var(--fill);
+  border:1px solid var(--sep);
   display:flex; align-items:center; justify-content:center;
-  color:#fff;
-  box-shadow:0 3px 9px rgba(94,92,230,.38);
+  color:var(--accent);
 }
 .th-ic-head-icon svg{ width:20px; height:20px; }
 .th-ic-head-txt{ flex:1; min-width:0; }
@@ -604,6 +604,18 @@ html[data-theme="dark"] .pub-submit:disabled { background: #3a3a3c; }
   max-width:82px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   text-align:center; letter-spacing:.1px;
 }
+/* 已自定义图标：名称下方快捷「恢复默认」小按钮（与主屏预览条同步刷新） */
+.th-ic-restore{
+  margin-top:1px;
+  padding:3.5px 10px;
+  border:none; border-radius:100px;
+  background:var(--fill);
+  color:var(--danger);
+  font-size:10.5px; font-weight:600; font-family:inherit; letter-spacing:.2px;
+  cursor:pointer;
+  transition:opacity .15s ease, transform .15s ease;
+}
+.th-ic-restore:active{ opacity:.55; transform:scale(.94); }
 .th-ic-resetall{
   display:flex; align-items:center; justify-content:center; gap:7px;
   margin:10px 16px 0; width:calc(100% - 32px);
