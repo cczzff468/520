@@ -7,9 +7,11 @@ import { Statusbar } from './statusbar.js';
 import { Settings } from './db.js';
 import { toggleTorch } from './island.js';
 import { lunarText } from './lunar.js';
+import { Passcode } from './passcode.js';
 
 export const Lock = {
   init() {
+    Passcode.load(); // 预载锁屏密码配置（门禁同步判断）
     const lock = document.getElementById('lock');
     lock.innerHTML = `
       <div class="lock-wallpaper"></div>
@@ -36,8 +38,10 @@ export const Lock = {
     lock.querySelector('#lock-clock-block').addEventListener('click', () => this.unlock());
 
     lock.querySelector('#lock-cam').addEventListener('click', () => {
-      this.unlock();
-      import('./applayer.js').then(m => m.openApp('camera'));
+      /* 相机快捷入口同样需要通过密码门禁（解锁后再打开相机） */
+      this.unlock(() => {
+        import('./applayer.js').then(m => m.openApp('camera'));
+      });
     });
     lock.querySelector('#lock-torch').addEventListener('click', () => {
       haptic();
@@ -76,12 +80,26 @@ export const Lock = {
   },
 
   show() {
+    this._authed = false; // 每次上锁重置密码门禁
     this._el.classList.add('show');
     Statusbar.setStyle('dark'); // 过渡色
     Statusbar.auto(null, 60);  // 自动采样锁屏壁纸：浅色壁纸 → 黑字 + 锁屏浅色UI
   },
-  unlock() {
+  /* 解锁入口：密码开启时先弹密码盘（验证通过才真正解锁）
+     after：解锁成功后的回调（如锁屏相机快捷入口） */
+  unlock(after) {
     if (!this._el.classList.contains('show')) return;
+    if (Passcode.isOn() && !this._authed) {
+      Passcode.ask({ title: '输入密码', verify: true }).then(code => {
+        if (!code) return; // 取消 → 留在锁屏
+        this._authed = true;
+        this._doUnlock(after);
+      });
+      return;
+    }
+    this._doUnlock(after);
+  },
+  _doUnlock(after) {
     haptic(6);
     this._el.style.transition = 'transform .45s cubic-bezier(.32,.72,0,1), opacity .45s ease';
     this._el.style.transform = 'translateY(-100%)';
@@ -92,6 +110,7 @@ export const Lock = {
       document.getElementById('home').classList.add('show');
       // 解锁后回主屏：自动采样主屏壁纸亮度决定黑白字；若直接进入应用（如锁屏相机）则由 openApp 设置
       import('./applayer.js').then(m => { if (!m.isAppOpen()) Statusbar.auto(null, 80); });
+      if (after) after();
     }, 480);
   },
 };

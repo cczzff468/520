@@ -52,6 +52,8 @@ const ICONS = {
   cpu: rowIconHTML('#5E5CE6', '<rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2.5v2M15 2.5v2M9 19.5v2M15 19.5v2M2.5 9h2M2.5 15h2M19.5 9h2M19.5 15h2"/>'),
   eye: rowIconHTML('#00A3A1', '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3.2"/>'),
   hapticIcon: rowIconHTML('#FF9500', '<rect x="8" y="2.5" width="8" height="19" rx="4"/><path d="M12 7.5v.5M12 11.5v.5M12 15.5v.5"/>'),
+  lockPass: rowIconHTML('#007AFF', '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>'),
+  lockKey: rowIconHTML('#5E5CE6', '<rect x="3" y="10" width="9" height="11" rx="2"/><path d="M12 10V6a3.5 3.5 0 0 1 7 0v4M6.5 14.5v2"/>'),
 };
 
 export default {
@@ -76,6 +78,7 @@ export default {
           ${searchBarHTML()}
           ${accountCard()}
           ${group1()}
+          ${groupPasscode()}
           ${groupWallpaper()}
           ${groupAPI()}
           ${groupPrivacy()}
@@ -141,6 +144,18 @@ function group1() {
         <div class="row" data-nav="theme">${ICONS.theme}<div class="row-label">外观</div><div class="row-val" id="st-theme-val">自动</div><div class="row-chevron">${chevron}</div></div>
         <div class="row" data-nav="lang">${ICONS.lang}<div class="row-label">语言</div><div class="row-val">简体中文</div><div class="row-chevron">${chevron}</div></div>
         <div class="row" data-nav="about">${ICONS.info}<div class="row-label">关于本机</div><div class="row-val">AppleAI Web 1.0</div><div class="row-chevron">${chevron}</div></div>
+      </div>
+    </div>`;
+}
+
+/* ---------- 锁屏密码（安全分组） ---------- */
+function groupPasscode() {
+  return `
+    <div class="inset-group">
+      <div class="inset-group-title">安全</div>
+      <div class="inset-card">
+        <div class="row" id="st-pass-sw-row">${ICONS.lockPass}<div class="row-label">锁屏密码</div><div class="switch" id="st-pass-sw"></div></div>
+        <div class="row" id="st-pass-change-row">${ICONS.lockKey}<div class="row-label">更改密码</div><div class="row-val" id="st-pass-val">未设置</div><div class="row-chevron">${chevron}</div></div>
       </div>
     </div>`;
 }
@@ -241,6 +256,53 @@ async function bindGroups(body) {
       if (next) haptic(8);
       toast('触感反馈已' + (next ? '开启' : '关闭'));
     };
+  }
+
+  /* 锁屏密码：开启 / 关闭 / 更换（密码盘复用 core/passcode.js） */
+  const { Passcode } = await import('../core/passcode.js');
+  const passSw = body.querySelector('#st-pass-sw');
+  const passVal = body.querySelector('#st-pass-val');
+  if (passSw) {
+    const syncPassUI = () => {
+      passSw.classList.toggle('on', Passcode.isOn());
+      if (passVal) passVal.textContent = Passcode.isOn() ? '已开启' : Passcode.hasCode() ? '已关闭' : '未设置';
+    };
+    body.querySelector('#st-pass-sw-row').onclick = async () => {
+      haptic(4);
+      if (Passcode.isOn()) {
+        /* 关闭需验证当前密码（iOS 行为） */
+        const ok = await Passcode.ask({ title: '输入密码以关闭', verify: true });
+        if (!ok) return;
+        await Passcode.disable();
+        syncPassUI();
+        toast('锁屏密码已关闭');
+      } else if (Passcode.hasCode()) {
+        const ok = await Passcode.ask({ title: '输入密码以开启', verify: true });
+        if (!ok) return;
+        await Passcode.enable();
+        syncPassUI();
+        toast('锁屏密码已开启');
+      } else {
+        const code = await Passcode.ask({ title: '设置新密码', confirmSecond: true });
+        if (!code) return;
+        await Passcode.setCode(code);
+        syncPassUI();
+        toast('锁屏密码已开启');
+      }
+    };
+    body.querySelector('#st-pass-change-row').onclick = async () => {
+      haptic(4);
+      if (Passcode.hasCode()) {
+        const ok = await Passcode.ask({ title: '输入旧密码', verify: true });
+        if (!ok) return;
+      }
+      const code = await Passcode.ask({ title: '设置新密码', confirmSecond: true });
+      if (!code) return;
+      await Passcode.setCode(code);
+      syncPassUI();
+      toast('密码已设置并开启');
+    };
+    syncPassUI();
   }
 
   const city = await WeatherEngine.getCity();

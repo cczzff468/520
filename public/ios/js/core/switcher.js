@@ -66,9 +66,10 @@ export const Switcher = {
         this._el.id = 'task-switcher';
         document.getElementById('screen').appendChild(this._el);
       }
-      /* 点击空白处 → 收起回到当前应用/主屏 */
+      /* 点击卡片以外任何空白区域 → 返回主屏（关闭当前应用，iOS 真实行为） */
       this._el.addEventListener('click', (e) => {
-        if (e.target === this._el || e.target === this._rail) this.dismiss();
+        if (e.target.closest && e.target.closest('.ts-card')) return;
+        this.dismissToHome();
       });
     }
 
@@ -113,11 +114,22 @@ export const Switcher = {
         } else {
           snapHost.appendChild(snap);
         }
-        /* 按卡片实际宽度缩放（app-root 固定 393px 宽） */
-        requestAnimationFrame(() => {
-          const w = card.querySelector('.ts-snap-wrap').clientWidth || 240;
-          snapHost.style.transform = `scale(${(w / 393).toFixed(4)})`;
+        /* 按卡片实际宽度缩放（app-root 固定 393px 宽）——两段式：
+           ① 立即用布局宽度 clientWidth（不受入场动画 transform 影响，但取整有亚像素误差）
+           ② 入场动画结束后改用 getBoundingClientRect 分数宽度 ×1.004 过盈缩放：
+              完全覆盖卡片边缘，杜绝深色应用露底色发丝缝（700ms 兜底防动画被打断） */
+        const snapScale = (frac) => {
+          if (!snapHost.isConnected) return;
+          const w = frac
+            ? card.querySelector('.ts-snap-wrap').getBoundingClientRect().width
+            : (card.querySelector('.ts-snap-wrap').clientWidth || 240);
+          if (w) snapHost.style.transform = `scale(${(w / 393 * (frac ? 1.004 : 1.001)).toFixed(4)})`;
+        };
+        requestAnimationFrame(() => snapScale(false));
+        card.addEventListener('animationend', (e) => {
+          if (e.target === card && e.animationName === 'tsCardIn') snapScale(true);
         });
+        setTimeout(() => snapScale(true), 700);
       } else {
         /* 无快照占位卡片（图标居中，名称在下方脚注） */
         card.innerHTML = `
@@ -179,7 +191,7 @@ export const Switcher = {
     });
 
     const hint = el('div', 'ts-hint');
-    hint.textContent = '左右滑动切换 · 上滑卡片关闭 · 点击空白返回';
+    hint.textContent = '点击空白处返回主屏 · 上滑卡片可关闭应用';
     this._el.append(bg, shade, this._rail, hint);
     this._el.classList.add('show');
     Statusbar.setStyle('dark');

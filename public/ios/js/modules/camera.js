@@ -319,9 +319,17 @@ async function capture() {
 
   const f = FILTERS.find(x => x.id === currentFilter);
   const vw = video.videoWidth, vh = video.videoHeight;
-  /* 变焦裁切：按当前倍率取中心区域 */
+  /* 变焦裁切 —— 与预览所见完全一致（所见即所得）：
+     预览是 object-fit:cover（满屏裁切显示）+ scale(zoom)，
+     故 1× 可见区域 = 视频被 cover 裁出的舞台矩形（取 stageW/s × stageH/s），
+     变焦 z 后 = 该矩形/z；成片取同一中心区域 → 画幅与取景完全一致
+     （修复：旧算法直接裁 vw/z × vh/z，1× 成片比预览拍得更广、画幅 3:4 与预览 19.5:9 不符） */
   const z = Math.max(1, zoom);
-  const cw = Math.round(vw / z), ch = Math.round(vh / z);
+  const stW = video.clientWidth || 393;
+  const stH = video.clientHeight || 852;
+  const cover = Math.max(stW / vw, stH / vh);
+  const cw = Math.max(1, Math.round(stW / cover / z));
+  const ch = Math.max(1, Math.round(stH / cover / z));
   const sx = (vw - cw) / 2, sy = (vh - ch) / 2;
   const mirrored = camFacing === 'user';
 

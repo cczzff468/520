@@ -436,6 +436,86 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 }
 #lock.light-ui .lock-quick button:active{ background:#DCDCE1; }
 
+/* ---------- 锁屏密码盘（iOS 风格 · 全屏毛玻璃， z 高于锁屏低于状态栏） ---------- */
+.pp-overlay{
+  position:absolute; inset:0; z-index:880;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  background:rgba(8,8,12,.42);
+  backdrop-filter:blur(30px) saturate(1.15);
+  -webkit-backdrop-filter:blur(30px) saturate(1.15);
+  color:#fff;
+  animation:fadeIn .22s ease both;
+}
+.pp-overlay.out{ animation:fadeOut .2s ease both; }
+.pp-title{ font-size:19px; font-weight:600; letter-spacing:.3px; }
+.pp-sub{
+  font-size:13px; color:rgba(255,255,255,.62);
+  margin-top:7px; min-height:16px; text-align:center;
+  transition:color .2s;
+}
+.pp-sub.warn{ color:#FF6961; }
+.pp-dots{
+  display:flex; gap:23px;
+  margin:30px 0 46px;
+}
+.pp-dots span{
+  width:13px; height:13px; border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.92);
+  transition:background .16s, border-color .16s, transform .16s;
+}
+.pp-dots span.fill{
+  background:#fff;
+  transform:scale(1.18);
+}
+.pp-dots.shake{ animation:ppShake .5s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes ppShake{
+  10%, 90%{ transform:translateX(-9px); }
+  20%, 80%{ transform:translateX(9px); }
+  30%, 50%, 70%{ transform:translateX(-13px); }
+  40%, 60%{ transform:translateX(13px); }
+}
+.pp-pad{
+  display:grid;
+  grid-template-columns:repeat(3, 78px);
+  grid-auto-rows:78px;
+  gap:16px 28px;
+}
+.pp-key{
+  width:78px; height:78px; border-radius:50%;
+  background:rgba(255,255,255,.13);
+  color:#fff;
+  border:none;
+  font-family:inherit;
+  font-size:31px; font-weight:400; line-height:1;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.14);
+  transition:background .15s;
+  cursor:pointer;
+}
+.pp-key small{
+  font-size:9.5px; font-weight:700; letter-spacing:2.2px;
+  color:rgba(255,255,255,.78);
+  margin-top:3px;
+}
+.pp-key:active{ background:rgba(255,255,255,.42); }
+.pp-key.blank{ background:none; box-shadow:none; pointer-events:none; }
+.pp-del{
+  width:78px; height:78px;
+  display:flex; align-items:center; justify-content:center;
+  background:none; border:none;
+  color:rgba(255,255,255,.85);
+  cursor:pointer;
+}
+.pp-del:active{ opacity:.45; }
+.pp-cancel{
+  margin-top:36px;
+  background:none; border:none;
+  color:rgba(255,255,255,.85);
+  font-size:16px; font-family:inherit;
+  cursor:pointer;
+}
+.pp-cancel:active{ opacity:.5; }
+
 /* ---------- 多任务切换器 ---------- */
 /* 背景为当前壁纸重度模糊 + 暗色遮罩（.ts-bg/.ts-shade），暗色兜底 */
 #task-switcher{
@@ -462,9 +542,10 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   flex:1;
   display:flex; align-items:center; gap:14px;
   overflow-x:auto; overflow-y:hidden;
-  padding:0 26px;
+  padding:100px 26px 0; /* 顶部留白：卡片组整体下移（卡片顶≈110px，贴近 iOS 切换器重心） */
   scroll-snap-type:x mandatory;
   -webkit-overflow-scrolling:touch;
+  justify-content:safe center; /* 单卡时水平居中（溢出时安全回退起点滚动） */
   position:relative; z-index:1; /* 位于壁纸背景层之上 */
 }
 .ts-rail::-webkit-scrollbar{ display:none; }
@@ -504,12 +585,12 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   padding:3.5px 9px; border-radius:10px;
   z-index:3;
 }
-/* 实时界面快照区 */
+/* 实时界面快照区（底色取卡片深色：深色应用不再露浅色发丝缝） */
 .ts-snap-wrap{
   flex:1;
   position:relative;
   overflow:hidden;
-  background:#F2F2F7;
+  background:#0E0E12;
 }
 .ts-snap-wrap::after{ /* 顶部融入暗背景的渐隐 */
   content:''; position:absolute; inset:0;
@@ -520,7 +601,7 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   position:absolute; top:0; left:0;
   width:393px; height:852px;
   transform-origin:0 0;
-  background:#F2F2F7;
+  background:#0E0E12;
 }
 .ts-snap > *{ width:393px; height:852px; }
 /* 当前应用真实窗口搬入卡片：继续运行（真·实时界面），但不可交互 */
