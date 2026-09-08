@@ -44,6 +44,14 @@ export const Switcher = {
 
   isOpen() { return !!(this._el && this._el.classList.contains('show') && !this._el.classList.contains('closing')); },
 
+  /* 把正在运行的应用窗口搬回 app-layer（卡片里展示期间它一直在真实运行） */
+  _restoreLiveWindow() {
+    if (!this._liveWin) return;
+    const layer = document.getElementById('app-layer');
+    if (layer && this._liveWin.isConnected) layer.appendChild(this._liveWin);
+    this._liveWin = null;
+  },
+
   show() {
     if (this.isOpen()) return;
     if (!this._recents.length && !isAppOpen()) { haptic(6); return; } // 无最近应用
@@ -73,22 +81,21 @@ export const Switcher = {
       if (!app) return;
       const card = el('div', 'ts-card' + (id === curId ? ' cur' : ''));
       card.dataset.app = id;
-      /* 快照来源：当前应用 = 实时 DOM 克隆；其他 = 关闭时保存的快照 */
+      /* 卡片内容来源：
+         当前应用 = 真实运行中的窗口直接搬入卡片（继续运行，真·实时界面）
+         其他应用 = 关闭时保存的界面快照克隆 */
       let snap = null;
+      let liveWin = null;
       if (id === curId && getLiveContent()) {
-        try {
-          snap = getLiveContent().cloneNode(true);
-          snap.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
-          snap.querySelectorAll('canvas, video, audio, iframe').forEach(n => n.remove());
-          snap.style.pointerEvents = 'none';
-        } catch (e) { snap = null; }
-      } else {
+        liveWin = document.querySelector('#app-layer .app-window');
+      }
+      if (!liveWin && id !== curId) {
         snap = Snapshots.get(id);
         if (snap) snap = snap.cloneNode(true); // 展示克隆，源留给下次
       }
 
-      if (snap) {
-        /* 实时界面卡片：缩放的界面快照 + 底部脚注（小图标+名称） */
+      if (liveWin || snap) {
+        /* 实时界面卡片：缩放的界面 + 底部脚注（小图标+名称） */
         card.innerHTML = `
           ${id === curId ? '<span class="ts-badge">正在使用</span>' : ''}
           <div class="ts-snap-wrap"><div class="ts-snap"></div></div>
@@ -97,7 +104,12 @@ export const Switcher = {
             <div class="ts-name">${app.name}</div>
           </div>`;
         const snapHost = card.querySelector('.ts-snap');
-        snapHost.appendChild(snap);
+        if (liveWin) {
+          snapHost.appendChild(liveWin); // 搬入真实窗口：计时器/音频/动画持续运行
+          this._liveWin = liveWin;
+        } else {
+          snapHost.appendChild(snap);
+        }
         /* 按卡片实际宽度缩放（app-root 固定 393px 宽） */
         requestAnimationFrame(() => {
           const w = card.querySelector('.ts-snap-wrap').clientWidth || 240;
@@ -139,8 +151,8 @@ export const Switcher = {
           const remove = () => {
             this._recents = this._recents.filter(x => x !== id);
             Snapshots.clear(id); // 快照一并清理
+            if (id === Registry.currentId()) { this._restoreLiveWindow(); closeApp(); }
             card.remove();
-            if (id === Registry.currentId()) closeApp();
             if (!this._visibleRecents().length) this.close();
           };
           setTimeout(remove, 240);
@@ -187,6 +199,7 @@ export const Switcher = {
 
   close() {
     if (!this._el) return;
+    this._restoreLiveWindow(); // 先把真实窗口搬回应用层再收起
     this._el.classList.add('closing');
     setTimeout(() => {
       this._el.classList.remove('show', 'closing');

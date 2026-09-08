@@ -164,7 +164,9 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 .app-icon-cell{
   display:flex; flex-direction:column; align-items:center; gap:5px;
   cursor:pointer;
+  position:relative; /* 删除角标挂点（不受 shape overflow 裁剪） */
   -webkit-touch-callout:none;
+  touch-action:none; /* 触屏拖拽换位：禁止浏览器手势抢占 pointer 事件 */
 }
 .app-icon-cell:active .app-icon-shape{ transform:scale(.88); opacity:.8; }
 .app-icon-shape{
@@ -201,6 +203,7 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   overflow:hidden;
   position:relative;
   cursor:pointer;
+  touch-action:none; /* 触屏长按拖拽 */
   background:linear-gradient(135deg,#5BA8E4 0%,#3E7FD0 52%,#2E64B8 100%);
   box-shadow:0 6px 18px rgba(0,0,0,.24);
 }
@@ -257,38 +260,49 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   border-radius:16px;
   cursor:grabbing;
 }
+/* 删除角标：挂在 cell 上（shape 的 overflow:hidden 会把探出部分裁掉） */
 .icon-del{
-  position:absolute; top:-7px; left:-7px;
-  width:23px; height:23px; border-radius:50%;
-  background:rgba(28,28,32,.82);
-  backdrop-filter:blur(6px) saturate(1.4);
-  -webkit-backdrop-filter:blur(6px) saturate(1.4);
+  position:absolute; top:-7px; left:calc(50% - 38px);
+  width:24px; height:24px; border-radius:50%;
+  background:rgba(22,22,26,.86);
+  backdrop-filter:blur(6px) saturate(1.5);
+  -webkit-backdrop-filter:blur(6px) saturate(1.5);
   display:flex; align-items:center; justify-content:center;
   border:none; padding:0; cursor:pointer; z-index:3;
-  box-shadow:0 2px 7px rgba(0,0,0,.35), inset 0 0 0 .5px rgba(255,255,255,.22);
+  box-shadow:0 3px 10px rgba(0,0,0,.42), inset 0 0 0 .5px rgba(255,255,255,.3), inset 0 1px 1px rgba(255,255,255,.16);
   animation:popIn .22s var(--ease-spring) both;
 }
-.icon-del svg{ width:10px; height:10px; }
-.icon-del:active{ background:rgba(255,59,48,.92); transform:scale(.88); }
+.icon-del svg{ width:11px; height:11px; }
+.icon-del:active{ background:rgba(255,59,48,.94); transform:scale(.86); }
+/* 编辑模式顶栏：恢复默认（左）+ 完成（右） */
 .home-edit-bar{
-  position:absolute; left:50%; transform:translateX(-50%);
-  bottom:calc(92px + 26px + 22px);
-  display:flex; gap:10px;
+  position:absolute;
+  top:calc(var(--sb-h) + 8px);
+  left:0; right:0;
+  display:flex; justify-content:space-between;
+  padding:0 18px;
+  box-sizing:border-box;
   z-index:30;
-  animation:slideUp .3s var(--ease-ios) both;
+  pointer-events:none; /* 空白区域不遮挡图标拖拽 */
+  animation:barIn .3s var(--ease-ios) both;
+}
+@keyframes barIn{
+  from{ transform:translateY(-16px); opacity:0; }
+  to{ transform:translateY(0); opacity:1; }
 }
 .heb-btn{
-  padding:9px 20px; border-radius:20px;
+  pointer-events:auto;
+  padding:8px 19px; border-radius:19px;
   font-size:14px; font-weight:600;
   border:none; cursor:pointer;
   backdrop-filter:var(--blur-heavy);
   -webkit-backdrop-filter:var(--blur-heavy);
 }
 .heb-btn.ghost{
-  background:rgba(255,255,255,.2); color:#fff;
-  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.35);
+  background:rgba(28,28,32,.5); color:#fff;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.32);
 }
-.heb-btn.fill{ background:#fff; color:#111; }
+.heb-btn.fill{ background:#fff; color:#111; box-shadow:0 3px 12px rgba(0,0,0,.28); }
 .heb-btn:active{ transform:scale(.94); }
 
 /* 页面圆点 */
@@ -416,12 +430,11 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 #lock.light-ui .lock-quick button:active{ background:#DCDCE1; }
 
 /* ---------- 多任务切换器 ---------- */
+/* 纯暗色半透明遮罩（无毛玻璃泛白）：卡片外的壁纸直接透出 */
 #task-switcher{
   position:absolute; inset:0; z-index:860;
   display:none; flex-direction:column;
-  background:rgba(12,12,16,.46);
-  backdrop-filter:blur(26px) saturate(140%);
-  -webkit-backdrop-filter:blur(26px) saturate(140%);
+  background:rgba(10,10,14,.48);
 }
 #task-switcher.show{ display:flex; animation:fadeIn .22s ease both; }
 #task-switcher.closing{ animation:fadeOut .2s ease both; }
@@ -436,16 +449,16 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 .ts-rail::-webkit-scrollbar{ display:none; }
 .ts-card{
   flex:none;
-  width:62%;
-  max-height:72%;
-  aspect-ratio:0.52;
-  border-radius:30px;
+  width:70%;
+  max-height:88%;
+  aspect-ratio:0.44; /* 更接近整机比例：上下显著更高 */
+  border-radius:32px;
   scroll-snap-align:center;
   display:flex; flex-direction:column;
   position:relative;
   background:linear-gradient(165deg,#3A3A40 0%,#222228 55%,#17171C 100%);
   border:.5px solid rgba(255,255,255,.14);
-  box-shadow:0 18px 44px rgba(0,0,0,.5);
+  box-shadow:0 22px 52px rgba(0,0,0,.55);
   cursor:pointer;
   overflow:hidden;
 }
@@ -459,10 +472,9 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 .ts-card.closing{ animation:tsCardClose .26s var(--ease-ios) both; }
 @keyframes tsCardClose{ to{ transform:translateY(-110px) scale(.55); opacity:0; } }
 .ts-badge{
-  position:absolute; top:12px; left:14px;
-  font-size:10.5px; font-weight:600; color:rgba(255,255,255,.85);
-  background:rgba(0,0,0,.4);
-  backdrop-filter:blur(6px);
+  position:absolute; top:14px; left:16px;
+  font-size:10.5px; font-weight:600; color:rgba(255,255,255,.9);
+  background:rgba(14,14,18,.6);
   padding:3.5px 9px; border-radius:10px;
   z-index:3;
 }
@@ -475,7 +487,7 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
 }
 .ts-snap-wrap::after{ /* 顶部融入暗背景的渐隐 */
   content:''; position:absolute; inset:0;
-  background:linear-gradient(180deg, rgba(0,0,0,.14), transparent 14%);
+  background:linear-gradient(180deg, rgba(0,0,0,.14), transparent 12%);
   pointer-events:none;
 }
 .ts-snap{
@@ -485,15 +497,20 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   background:#F2F2F7;
 }
 .ts-snap > *{ width:393px; height:852px; }
-/* 底部脚注：小图标 + 应用名 */
+/* 当前应用真实窗口搬入卡片：继续运行（真·实时界面），但不可交互 */
+.ts-snap .app-window{ border-radius:0; }
+.ts-snap .app-window,
+.ts-snap .app-window *{ pointer-events:none; }
+.ts-snap .app-window .app-back-fab{ display:none; }
+/* 底部脚注：小图标 + 应用名（实色暗条，避免泛白玻璃） */
 .ts-foot{
   flex:none;
-  height:52px;
+  height:54px;
   display:flex; align-items:center; justify-content:center; gap:8px;
-  background:rgba(0,0,0,.28);
-  backdrop-filter:blur(10px);
+  background:rgba(16,16,20,.74);
+  box-shadow:inset 0 .5px 0 rgba(255,255,255,.08);
 }
-.ts-mini{ width:24px; height:24px; border-radius:6.5px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.4); }
+.ts-mini{ width:25px; height:25px; border-radius:6.5px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.4); }
 .ts-mini svg{ width:100%; height:100%; display:block; }
 .ts-name{ color:#fff; font-size:14px; font-weight:600; text-shadow:0 1px 5px rgba(0,0,0,.45); }
 /* 无快照占位卡片 */

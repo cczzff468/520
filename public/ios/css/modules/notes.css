@@ -118,14 +118,14 @@
 
 /* ---------- 编辑器 ---------- */
 .note-editor-body { padding: 0 18px 12px; }
-.note-editor-body.has-fixed-toolbar { padding-bottom: 76px; }
+.note-editor-body.has-fixed-toolbar { padding-bottom: 84px; }
 .note-title {
   width: 100%;
-  font-size: 25px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text);
-  padding: 20px 2px 6px;
-  letter-spacing: -.5px;
+  padding: 22px 2px 10px;
+  letter-spacing: -.4px;
   border: none;
   outline: none;
   background: none;
@@ -151,12 +151,19 @@
 }
 .note-editor {
   min-height: 300px;
-  font-size: 16.5px;
-  line-height: 1.65;
+  font-size: 17px;
+  line-height: 1.68;
   color: var(--text);
   outline: none;
-  padding: 4px 2px;
+  padding: 2px 2px 4px;
   word-break: break-word;
+  caret-color: var(--accent);
+}
+/* 空内容占位提示 */
+.note-editor:empty::before {
+  content: '输入正文…';
+  color: var(--text-3);
+  pointer-events: none;
 }
 .note-editor b { font-weight: 700; }
 
@@ -198,34 +205,50 @@
   font-weight: 700;
 }
 
-/* 工具栏：固定在页面底部（挂 pageEl，不随内容滚动） */
+/* 工具栏：固定在页面底部（挂 pageEl，不随内容滚动）iOS 格式栏质感 */
 .note-toolbar {
   position:absolute;
   left:50%; transform:translateX(-50%);
-  bottom:calc(14px + env(safe-area-inset-bottom, 0px));
+  bottom:calc(12px + env(safe-area-inset-bottom, 0px));
   display:flex;
-  justify-content:center;
-  gap:2px;
-  background:color-mix(in srgb, var(--nav-bg) 88%, transparent);
+  align-items:center;
+  gap:1px;
+  background:color-mix(in srgb, var(--nav-bg) 90%, transparent);
   backdrop-filter:var(--blur-heavy);
   -webkit-backdrop-filter:var(--blur-heavy);
   border:.5px solid var(--sep);
-  border-radius:20px;
-  padding:6px 8px;
+  border-radius:21px;
+  padding:4px 6px;
   width:fit-content;
-  max-width:calc(100% - 32px);
-  box-shadow:0 6px 20px rgba(0,0,0,.12);
+  max-width:calc(100% - 28px);
+  box-shadow:0 8px 26px rgba(0,0,0,.16), 0 2px 6px rgba(0,0,0,.08);
   overflow-x:auto;
   scrollbar-width:none;
   z-index:5;
 }
 .note-toolbar::-webkit-scrollbar { display: none; }
 .note-toolbar button {
-  padding: 6px 8.5px;
-  border-radius: 12px;
-  font-size: 13px;
-  color: var(--accent);
-  flex: none;
-  cursor: pointer;
+  min-width:46px;
+  height:36px;
+  padding:0 9px;
+  border-radius:15px;
+  font-size:13.5px;
+  font-weight:500;
+  color:var(--accent);
+  font-family:inherit;
+  flex:none;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  border:none;
+  background:transparent;
+  transition:background .16s ease, transform .16s var(--ease-ios, ease);
 }
-.note-toolbar button:active { background: var(--fill); }
+.note-toolbar button:active { background: var(--fill); transform:scale(.92); }
+/* 分隔线：B/I/U | 列表 | 待办 三组 */
+.note-toolbar .tb-sep {
+  flex:none;
+  width:.5px;
+  height:20px;
+  background:var(--sep);
+  margin:0 4px;
+}

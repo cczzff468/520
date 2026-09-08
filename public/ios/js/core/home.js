@@ -211,9 +211,7 @@ export const Home = {
   },
 
   _addDelButton(cell) {
-    const shape = cell.querySelector('.app-icon-shape');
-    if (!shape || shape.querySelector('.icon-del')) return;
-    shape.style.position = 'relative';
+    if (cell.querySelector(':scope > .icon-del')) return;
     const btn = el('button', 'icon-del');
     btn.type = 'button';
     btn.setAttribute('aria-label', '删除应用');
@@ -234,7 +232,8 @@ export const Home = {
         this._persistLayout();
       }, 250);
     });
-    shape.appendChild(btn);
+    /* 挂在 cell 上：shape 的 overflow:hidden 会裁掉探出的角标（显示不完整的根因） */
+    cell.appendChild(btn);
   },
 
   /* ---------- 拖拽排序（跨容器）：图标与小组件通用 ---------- */

@@ -10,36 +10,35 @@
 }
 
 .wt-header {
-  display: flex; align-items: center; gap: 8px;
-  padding: calc(var(--sb-h) + 10px) 6px 18px;
+  display:grid;
+  grid-template-columns:1fr auto 1fr; /* 三段式：返回靠最左 · 城市真正居中 · 右钮组靠右 */
+  align-items:center;
+  padding:calc(var(--sb-h) + 10px) 6px 18px; /* 水平仅 6px：返回键贴近屏幕左缘 */
 }
 .wt-plus, .wt-refresh, .wt-back {
-  width: 34px; height: 34px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255,255,255,.16);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff;
-  flex: none;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: background .18s ease, transform .18s var(--ease-ios, ease);
+  width:34px; height:34px;
+  border-radius:50%;
+  border:none;
+  background:rgba(255,255,255,.16);
+  display:flex; align-items:center; justify-content:center;
+  color:#fff;
+  flex:none;
+  cursor:pointer;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  transition:background .18s ease, transform .18s var(--ease-ios, ease);
 }
 .wt-plus:active, .wt-refresh:active, .wt-back:active { background: rgba(255,255,255,.32); transform: scale(.9); }
+/* 返回键贴最左（不再被占位符推右） */
+.wt-back{ justify-self:start; }
 /* 右侧按钮组（城市管理+刷新） */
-.wt-right-group { display: flex; gap: 8px; flex: none; }
-/* 城市名居中（左右对称占位：左1钮 vs 右2钮，右组宽则左留白补偿） */
-.wt-header::before {
-  content: '';
-  flex: none;
-  width: 42px; /* 与右侧组等宽（34+8+…近似） */
-}
+.wt-right-group{ display:flex; gap:8px; flex:none; justify-self:end; }
 .wt-city {
-  flex: 1;
-  text-align: center;
-  font-size: 26px; font-weight: 700;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  grid-column:2;
+  text-align:center;
+  font-size:26px; font-weight:700;
+  max-width:100%;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 
 /* 城市管理页提示 */

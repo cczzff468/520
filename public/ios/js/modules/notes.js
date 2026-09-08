@@ -182,12 +182,14 @@ function openEditor(note) {
       /* 工具栏固定在页面底部（不随内容滚动，挂在 pageEl 上） */
       const toolbar = el('div', 'note-toolbar');
       toolbar.innerHTML = `
-        <button data-cmd="bold"><b>B</b></button>
-        <button data-cmd="italic"><i>I</i></button>
-        <button data-cmd="underline"><u>U</u></button>
-        <button data-cmd="insertUnorderedList">• 列表</button>
-        <button data-cmd="insertOrderedList">1. 列表</button>
-        <button data-cmd="todo" id="nb-todo">☑ 待办</button>`;
+        <button data-cmd="bold" aria-label="粗体"><b>B</b></button>
+        <button data-cmd="italic" aria-label="斜体"><i>I</i></button>
+        <button data-cmd="underline" aria-label="下划线"><u>U</u></button>
+        <i class="tb-sep"></i>
+        <button data-cmd="insertUnorderedList" aria-label="无序列表">• 列表</button>
+        <button data-cmd="insertOrderedList" aria-label="有序列表">1. 列表</button>
+        <i class="tb-sep"></i>
+        <button data-cmd="todo" id="nb-todo" aria-label="待办">☑ 待办</button>`;
       body.classList.add('has-fixed-toolbar');
       pageEl.appendChild(toolbar);
 
@@ -203,18 +205,33 @@ function openEditor(note) {
           else document.execCommand(b.dataset.cmd, false, null);
         };
       });
-      // 自动保存（1.5s 防抖）
-      let saveTimer;
+
+      /* 显式保存：仅点「完成」或返回时确认（不再边打字边自动入库） */
+      let dirty = false;
       const save = async (silent = true) => {
         data.title = body.querySelector('.note-title').value.trim() || (stripHtml(editor.innerHTML).slice(0, 18)) || '新备忘录';
         data.content = editor.innerHTML;
         data.updatedAt = Date.now();
         await DB.put('notes', data);
-        if (!silent) { toast('已保存'); nav.pop(); loadList(); }
+        dirty = false;
+        if (!silent) { toast('已保存'); }
+        nav.pop();
+        loadList();
       };
       page._save = save;
-      editor.addEventListener('input', () => { clearTimeout(saveTimer); saveTimer = setTimeout(save, 1500); });
-      body.querySelector('.note-title').addEventListener('input', () => { clearTimeout(saveTimer); saveTimer = setTimeout(save, 1500); });
+      const markDirty = () => { dirty = true; };
+      editor.addEventListener('input', markDirty);
+      body.querySelector('.note-title').addEventListener('input', markDirty);
+
+      /* 返回时若有未保存修改 → 询问（未修改直接退） */
+      const tryBack = async () => {
+        if (!dirty) { nav.pop(); return; }
+        const ok = await confirmDialog('存储更改', '是否保存对此备忘录的更改？', { okText: '保存', cancelText: '不保存' });
+        if (ok !== true) { nav.pop(); return; } // 不保存/关闭弹窗：丢弃返回
+        await save(true);
+      };
+      const backBtn = pageEl.querySelector('.nav .nav-btn.chev');
+      if (backBtn) backBtn.onclick = () => { haptic(6); tryBack(); };
     },
   });
   nav.push(page);
