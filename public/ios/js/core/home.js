@@ -33,16 +33,31 @@ export const Home = {
     this.dots.innerHTML = '<i class="on"></i>';
     home.append(this.grid, this.dots, this.dock);
 
-    /* 布局持久化：顺序 + 已删除图标 */
-    const saved = await Settings.load('homeLayout', null);
+    /* 布局持久化：顺序 + 已删除图标
+       防御：IndexedDB 读取异常/数据形状非法时回退默认布局，绝不让图标渲染中断 */
+    let saved = null;
+    try { saved = await Settings.load('homeLayout', null); } catch (e) { saved = null; }
     this.layout = (saved && Array.isArray(saved.grid) && Array.isArray(saved.dock)) ? saved : DEFAULT_LAYOUT();
-    this.layout.hidden = this.layout.hidden || [];
+    this.layout.hidden = Array.isArray(this.layout.hidden) ? this.layout.hidden : [];
+    /* 过滤历史遗留的非法 id（如已下线应用/损坏数据），防止 buildIcon 崩溃中断整屏渲染 */
+    this.layout.grid = this.layout.grid.filter(id => typeof id === 'string' && Registry.get(id) && typeof AppIcons[id] === 'function');
+    this.layout.dock = this.layout.dock.filter(id => typeof id === 'string' && Registry.get(id) && typeof AppIcons[id] === 'function');
+
     /* 兼容后续新增的默认应用：自动补到网格末尾 */
     GRID_ORDER.concat(DOCK_ORDER).forEach(id => {
       if (!this.layout.grid.includes(id) && !this.layout.dock.includes(id) && !this.layout.hidden.includes(id)) {
         this.layout.grid.push(id);
       }
     });
+
+    /* 兜底：可见图标为 0（hidden 覆盖了全部/数据损坏）时自动恢复默认布局并固化清洗
+       注意：直接持久化内存对象（此时 DOM 尚未渲染，不能走 _persistLayout 的 DOM 读取） */
+    const visible = this.layout.grid.filter(id => !this.layout.hidden.includes(id)).length
+                  + this.layout.dock.filter(id => !this.layout.hidden.includes(id)).length;
+    if (visible === 0) {
+      this.layout = DEFAULT_LAYOUT();
+      try { Settings.setQuiet('homeLayout', { grid: [...this.layout.grid], dock: [...this.layout.dock], hidden: [] }); } catch (e) { /* 固化失败不影响本次渲染 */ }
+    }
 
     /* 天气小组件（截图样式：蓝色渐变大温度卡片） */
     this.widget = el('div', 'home-widget');
@@ -88,12 +103,21 @@ export const Home = {
     this.dock.querySelectorAll('.app-icon-cell').forEach(n => n.remove());
     this._iconEls = {};
     this.grid.appendChild(this.widget);
-    this.layout.grid.filter(id => !this.layout.hidden.includes(id)).forEach(id => this.grid.appendChild(this.buildIcon(id)));
-    this.layout.dock.filter(id => !this.layout.hidden.includes(id)).forEach(id => this.dock.appendChild(this.buildIcon(id)));
+    /* 单个图标构建失败不影响其余图标渲染 */
+    this.layout.grid.filter(id => !this.layout.hidden.includes(id)).forEach(id => {
+      const cell = this.buildIcon(id);
+      if (cell) this.grid.appendChild(cell);
+    });
+    this.layout.dock.filter(id => !this.layout.hidden.includes(id)).forEach(id => {
+      const cell = this.buildIcon(id);
+      if (cell) this.dock.appendChild(cell);
+    });
   },
 
   buildIcon(id) {
     const app = Registry.get(id);
+    const iconFn = AppIcons[id];
+    if (!app || typeof iconFn !== 'function') return null; // 非法 id：跳过而非中断整屏
     const cell = el('div', 'app-icon-cell');
     cell.dataset.app = id;
     cell.innerHTML = `
@@ -319,16 +343,19 @@ export const Home = {
   renderWeather(data) {
     const w = this.widget;
     if (!w || !w.querySelector('.hw-t')) return;
-    const city = WeatherEngine.city || { city: '—' };
-    const U = (c) => WeatherEngine.toDisplay(c);
-    const cur = data.current;
-    const today = data.daily[0];
-    w.querySelector('.hw-t').textContent = U(cur.temp);
-    w.querySelector('.hw-cond').textContent = data.current.code != null ? wText(data.current.code) : '';
-    w.querySelector('.hw-icon').innerHTML = wIcon(cur.code, !cur.isDay);
-    w.querySelector('.hw-air').textContent = `湿度 ${cur.humidity ?? '--'}%`;
-    w.querySelector('.hw-hilo').textContent = `${U(today.max)}° ~ ${U(today.min)}°`;
-    w.querySelector('.hw-city').textContent = (city.city || '').slice(0, 6);
+    if (!data || !data.current || !Array.isArray(data.daily) || !data.daily[0]) return; // 数据不完整：保留骨架不炸
+    try {
+      const city = WeatherEngine.city || { city: '—' };
+      const U = (c) => WeatherEngine.toDisplay(c);
+      const cur = data.current;
+      const today = data.daily[0];
+      w.querySelector('.hw-t').textContent = U(cur.temp);
+      w.querySelector('.hw-cond').textContent = data.current.code != null ? wText(data.current.code) : '';
+      w.querySelector('.hw-icon').innerHTML = wIcon(cur.code, !cur.isDay);
+      w.querySelector('.hw-air').textContent = `湿度 ${cur.humidity ?? '--'}%`;
+      w.querySelector('.hw-hilo').textContent = `${U(today.max)}° ~ ${U(today.min)}°`;
+      w.querySelector('.hw-city').textContent = (city.city || '').slice(0, 6);
+    } catch (e) { /* 单字段失败不影响其他字段 */ }
   },
 
   updateIsland() { /* 由 island.js 处理 */ },

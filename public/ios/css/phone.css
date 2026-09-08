@@ -367,8 +367,8 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   padding-top:calc(var(--sb-h) + 44px);
   position:relative;
 }
-/* 时钟块：整体左对齐，点击可解锁（备用入口） */
-.lock-clock-block{ padding:0 26px; cursor:pointer; }
+/* 时钟块：水平居中（iOS 原生锁屏样式），点击可解锁（备用入口） */
+.lock-clock-block{ text-align:center; cursor:pointer; }
 .lock-date{
   font-size:16.5px; font-weight:500;
   letter-spacing:.2px;

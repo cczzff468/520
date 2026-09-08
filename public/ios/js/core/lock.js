@@ -68,8 +68,10 @@ export const Lock = {
     this._timeNode.textContent = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
     const wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()];
     let dateLine = `${d.getMonth() + 1}月${d.getDate()}日${wd}`;
-    const lt = lunarText(d);
-    if (lt) dateLine += ` · ${lt}`;
+    try {
+      const lt = lunarText(d);
+      if (lt) dateLine += ` · ${lt}`;
+    } catch (e) { /* 农历异常不影响公历时间显示 */ }
     this._dateNode.textContent = dateLine;
   },
 

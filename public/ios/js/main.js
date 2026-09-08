@@ -54,7 +54,8 @@ async function boot() {
   await applyWallpaper('lock');
 
   Statusbar.init();
-  Home.init();
+  /* Home 渲染失败不阻断锁屏/其余系统启动（内部已全防御，此处双保险） */
+  try { await Home.init(); } catch (e) { console.error('[Home.init]', e); }
   Island.init();
   Lock.init();
   Switcher.init();
