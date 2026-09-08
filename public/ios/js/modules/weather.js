@@ -232,7 +232,7 @@ function cityCardBg(code, isDay) {
 function openCityManage() {
   const page = nav.makePage({
     title: '城市管理',
-    back: '天气',
+    chevBack: true,
     right: [navBtn('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', () => {
       const input = root.querySelector('#cm-input');
       if (input) { input.focus(); }

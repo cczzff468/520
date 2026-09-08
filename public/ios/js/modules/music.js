@@ -389,7 +389,7 @@ function probeDuration(arrayBuffer, mime) {
 function openPlayer(song, index, songs) {
   const page = nav.makePage({
     title: '',
-    back: '资料库',
+    chevBack: true,
     noNavbar: true,
     className: 'player-page',
     build(body, pageEl) {

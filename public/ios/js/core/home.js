@@ -28,6 +28,7 @@ export const Home = {
   _iconEls: {},
   editing: false,
   layout: null,
+  iconOverrides: {}, // 自定义图标覆盖表（{ [appId]: dataURL }）
 
   async init() {
     const home = document.getElementById('home');
@@ -46,6 +47,13 @@ export const Home = {
     let saved = null;
     try { saved = await Settings.load('homeLayout', null); } catch (e) { saved = null; }
     this.layout = (saved && Array.isArray(saved.grid) && Array.isArray(saved.dock)) ? saved : DEFAULT_LAYOUT();
+
+    /* 自定义图标（主题 App 上传）：{ [appId]: dataURL }，加载失败不阻断 */
+    try { this.iconOverrides = await Settings.load('iconOverrides', {}) || {}; } catch (e) { this.iconOverrides = {}; }
+    Bus.on('icons:changed', async () => {
+      try { this.iconOverrides = await Settings.load('iconOverrides', {}) || {}; } catch (e) { this.iconOverrides = {}; }
+      this.renderGrid();
+    });
     this.layout.hidden = Array.isArray(this.layout.hidden) ? this.layout.hidden : [];
     /* 过滤历史遗留的非法 id（如已下线应用/损坏数据），防止 buildIcon 崩溃中断整屏渲染 */
     this.layout.grid = this.layout.grid.filter(id => typeof id === 'string' && Registry.get(id) && typeof AppIcons[id] === 'function');
@@ -130,10 +138,11 @@ export const Home = {
     const app = Registry.get(id);
     const iconFn = AppIcons[id];
     if (!app || typeof iconFn !== 'function') return null; // 非法 id：跳过而非中断整屏
+    const ov = this.iconOverrides && this.iconOverrides[id]; // 自定义图标（上传图片）
     const cell = el('div', 'app-icon-cell');
     cell.dataset.app = id;
     cell.innerHTML = `
-      <div class="app-icon-shape ${LIVE_ICONS.includes(id) ? 'live-icon' : ''}">${AppIcons[id]()}</div>
+      <div class="app-icon-shape ${!ov && LIVE_ICONS.includes(id) ? 'live-icon' : ''}">${ov ? `<img class="app-icon-img" src="${ov}" alt="">` : AppIcons[id]()}</div>
       <div class="app-icon-label">${app ? app.name : id}</div>`;
     this._iconEls[id] = cell;
 
@@ -454,6 +463,7 @@ export const Home = {
   refreshLiveIcons() {
     if (this.editing) return; // 编辑模式下刷新会清掉删除角标
     LIVE_ICONS.forEach(id => {
+      if (this.iconOverrides && this.iconOverrides[id]) return; // 已自定义：保持上传图标
       const cell = this._iconEls[id];
       if (cell) {
         const shape = cell.querySelector('.app-icon-shape');

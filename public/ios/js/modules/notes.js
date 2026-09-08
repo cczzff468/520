@@ -205,7 +205,7 @@ function openEditor(note, opts = {}) {
 
   const page = nav.makePage({
     title: '',
-    back: '备忘录',
+    chevBack: true,
     right: [
       navBtn('<span class="nt-done-btn">完成</span>', () => page._save && page._save(false), 'pill-btn pill-text'),
     ],

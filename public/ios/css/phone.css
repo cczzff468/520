@@ -177,6 +177,11 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   transition:transform .3s var(--ease-spring), opacity .2s;
 }
 .app-icon-shape svg{ width:100%; height:100%; display:block; }
+/* 自定义图标（主题 App 上传的图片）：shape 的 overflow+圆角裁出 squircle */
+.app-icon-shape .app-icon-img{
+  width:100%; height:100%; display:block;
+  object-fit:cover; border-radius:0;
+}
 .app-icon-label{
   font-size:11.5px; font-weight:500; color:#fff;
   letter-spacing:.1px;
@@ -515,6 +520,44 @@ html[data-theme="dark"] #statusbar{ color:#fff; }
   cursor:pointer;
 }
 .pp-cancel:active{ opacity:.5; }
+/* 忘记密码（取消键下方，仅锁屏验证模式显示） */
+.pp-forgot{
+  margin-top:16px;
+  background:none; border:none;
+  color:rgba(255,255,255,.52);
+  font-size:12.5px; font-family:inherit;
+  text-decoration:underline;
+  text-underline-offset:3.5px;
+  text-decoration-color:rgba(255,255,255,.3);
+  cursor:pointer;
+  transition:color .18s ease;
+}
+.pp-forgot:active{ color:rgba(255,255,255,.9); }
+/* 忘记密码确认层（替代密码盘显示） */
+.pp-confirm{
+  display:flex; flex-direction:column; align-items:center; gap:24px;
+  max-width:290px;
+}
+.pp-cf-text{
+  font-size:14px; line-height:1.65;
+  color:rgba(255,255,255,.78);
+  text-align:center;
+}
+.pp-cf-acts{ display:flex; gap:14px; }
+.pp-cf-btn{
+  min-width:120px; padding:11px 18px;
+  border-radius:13px; border:none;
+  background:rgba(255,255,255,.14); color:#fff;
+  font-size:15px; font-weight:600; font-family:inherit;
+  cursor:pointer;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.14);
+  transition:transform .15s var(--ease-ios, ease), opacity .18s ease, background .18s ease;
+}
+.pp-cf-btn:active{ transform:scale(.95); opacity:.75; }
+.pp-cf-btn.danger{
+  background:#FF453A;
+  box-shadow:0 4px 16px rgba(255,69,58,.38);
+}
 
 /* ---------- 多任务切换器 ---------- */
 /* 背景为当前壁纸重度模糊 + 暗色遮罩（.ts-bg/.ts-shade），暗色兜底 */

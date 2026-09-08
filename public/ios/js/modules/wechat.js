@@ -288,7 +288,7 @@ async function openChat(convId) {
     },
   });
   page.el.classList.add('chat-page');
-  nav.push(page, { back: '微信' });
+  nav.push(page);
 }
 
 function autoGrow(input) { input.style.height = 'auto'; input.style.height = Math.min(96, input.scrollHeight) + 'px'; }

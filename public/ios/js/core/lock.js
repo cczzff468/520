@@ -90,7 +90,8 @@ export const Lock = {
   unlock(after) {
     if (!this._el.classList.contains('show')) return;
     if (Passcode.isOn() && !this._authed) {
-      Passcode.ask({ title: '输入密码', verify: true }).then(code => {
+      /* forgot:true → 锁屏密码盘显示「忘记密码？」（取消键下方），可重设后直接解锁 */
+      Passcode.ask({ title: '输入密码', verify: true, forgot: true }).then(code => {
         if (!code) return; // 取消 → 留在锁屏
         this._authed = true;
         this._doUnlock(after);

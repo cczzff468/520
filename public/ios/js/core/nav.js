@@ -1,7 +1,6 @@
 /* ============ 应用内页面导航栈（iOS 滑动过渡） ============ */
 
 import { el, haptic, Bus } from './utils.js';
-import { I } from './icons.js';
 
 /* ============ 全局导航实例注册表（供全局返回键使用） ============ */
 const NAVS = [];
@@ -36,11 +35,10 @@ export function createNav(host) {
       const r = el('div', 'nav-side right');
       right.forEach(b => r.appendChild(b));
       if (back !== null || chevBack) {
-        const backBtn = el('button', 'nav-btn chev' + (chevBack ? ' only' : ''));
-        /* chevBack：纯 chevron 返回键（无文字），iOS 编辑类页面风格，各子页统一 */
-        backBtn.innerHTML = chevBack
-          ? '<svg width="12" height="21" viewBox="0 0 12 21" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2L2 10.5 10 19"/></svg>'
-          : `${I.chevronL('')}<span style="font-size:16px">${back || '返回'}</span>`;
+        const backBtn = el('button', 'nav-btn chev only');
+        /* 统一返回键：全部为纯 chevron 图标（无文字），全局一致风格
+           back 参数仍被接受（兼容旧调用），但不再渲染文字 */
+        backBtn.innerHTML = '<svg width="12" height="21" viewBox="0 0 12 21" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2L2 10.5 10 19"/></svg>';
         backBtn.setAttribute('aria-label', '返回');
         backBtn.onclick = () => { haptic(6); pop(); };
         left.appendChild(backBtn);
