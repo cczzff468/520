@@ -6,6 +6,11 @@ import { createNav, navBtn } from '../core/nav.js';
 import { toast, actionSheet, dialog, confirmDialog, promptDialog, escapeHtml, loading, sheet } from '../core/ui.js';
 import { Apps as AppIcons, TIcons } from '../core/icons.js';
 import { chatComplete, getApiConfig, describeImage } from '../api/chat.js';
+import { Wallet, Bill, formatMoney, round2, income, openWalletHome, openRedPacketSend, openTransferSend, openRelativeGift, openMsgDetail } from './wallet.js';
+
+/* AI 好友可发送的特殊消息标记（红包/转账/亲属卡/位置） */
+const WALLET_MSG_RE = /\[位置[:：]([^\[\]]{1,20})\]|\[红包[:：]([^\[\]]{1,30})\]|\[转账[:：]([^\[\]]{1,30})\]|\[亲属卡[:：]([^\[\]]{1,40})\]/g;
+const WALLET_MARK_HINT = '\n你也可以发送特殊消息（仅在用户要求或语境自然合适时使用，一次最多一个标记）：\n- 红包：[红包:祝福语|金额]（金额≤200）\n- 转账：[转账:金额|备注]\n- 亲属卡：[亲属卡:每月额度|备注]（额度≤3000，用于赠送给用户）\n- 位置：[位置:地点名]';
 
 const PAGE = 30;
 const EMOJIS = '😀 😄 😅 😂 🤣 🙂 😉 😍 🤔 🤨 😮 😢 😭 😠 🤯 😴 🤗 🤫 🤭 🥳 🥺 😎 🤓 😇 😈 🙄 😲 🤝 👍 👎 👊 ✌️ 🤞 👌 👏 🙏 💪 ❤️ 💔 💯 🔥 ✨ 🌟 🎉 🎁 🍉 🍎 ☕ 🍜 ⚽ 🎮 🎧 📱 💻 🚀 🌈 ☀️ 🌙 ⛅ 🌧️ ❄️ 🐱 🐶 🐼'.split(' ');
@@ -18,7 +23,7 @@ const cleanups = [];
 
 export default {
   id: 'wechat',
-  name: '微信',
+  name: '信息',
   icon: AppIcons.wechat,
   sbStyle: 'light',
 
@@ -92,7 +97,7 @@ async function renderConvList() {
   navPage.style.position = 'static';
   const navBar = el('div', 'nav');
   navBar.style.minHeight = 'calc(var(--sb-h) + 44px)';
-  navBar.innerHTML = `<div class="nav-side" style="width:1px"></div><div class="nav-title">微信</div><div class="nav-side right"></div>`;
+  navBar.innerHTML = `<div class="nav-side" style="width:1px"></div><div class="nav-title">信息</div><div class="nav-side right"></div>`;
   const plusBtn = navBtn('<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', () => {
     actionSheet([
       { text: '发起群聊', value: 'group' },
@@ -151,6 +156,16 @@ async function renderConvRows(body, keyword) {
   }
 }
 
+/* 会话列表预览：钱包标记转可读文本 */
+function previewText(t) {
+  let s = String(t || '');
+  s = s.replace(/\[红包[:：]([^|\[\]]{0,20})[^\[\]]*\]/, '[红包] $1');
+  s = s.replace(/\[转账[:：]([^|\[\]]{0,16})[^\[\]]*\]/, '[转账] $1');
+  s = s.replace(/\[亲属卡[:：][^\[\]]*\]/, '[亲属卡]');
+  s = s.replace(/\[位置[:：]([^\[\]]{0,16})[^\[\]]*\]/, '[位置] $1');
+  return s;
+}
+
 function convRow(conv) {
   const row = el('div', 'row conv-row');
   row.innerHTML = `
@@ -160,7 +175,7 @@ function convRow(conv) {
         <span class="conv-name ellipsis" style="font-weight:600;font-size:16.5px">${escapeHtml(conv.name)}</span>
         ${conv.pinned ? '<span style="font-size:10px;color:var(--text-3)">置顶</span>' : ''}
       </div>
-      <div class="conv-preview clamp2" style="font-size:13.5px;color:var(--text-2);margin-top:3px">${escapeHtml(conv.lastMessage || '')}</div>
+      <div class="conv-preview clamp2" style="font-size:13.5px;color:var(--text-2);margin-top:3px">${escapeHtml(previewText(conv.lastMessage))}</div>
     </div>
     <div style="flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:5px">
       <span style="font-size:12px;color:var(--text-3)">${fmtSmartTime(conv.updatedAt)}</span>
@@ -295,7 +310,7 @@ function autoGrow(input) { input.style.height = 'auto'; input.style.height = Mat
 
 async function loadHistory(conv, listEl, scrollBottom) {
   const chat = currentChat;
-  const msgs = await DB.byIndex('messages', 'conversationId', conv.id);
+  const msgs = await DB.byIndex('messages', 'conversationId', conv.id, false);
   const start = Math.max(0, msgs.length - PAGE - (chat.msgs.length ? 0 : 0));
   const slice = msgs.slice(Math.max(0, msgs.length - PAGE));
   chat.msgs = msgs;
@@ -356,6 +371,13 @@ function msgRow(conv, m) {
   const row = el('div', 'msg-row' + (mine ? ' me' : ''));
   row.dataset.id = m.id;
 
+  /* 回执消息：居中灰色胶囊，无头像无气泡 */
+  if (m.receipt) {
+    row.classList.add('receipt-row');
+    row.innerHTML = `<div class="msg-receipt">${escapeHtml(m.receipt.text || '')}</div>`;
+    return row;
+  }
+
   let senderLabel = '';
   if (!mine && conv.type === 'group') {
     const memberColor = { 'c_poet': '#E645A5', 'c_dev': '#34C759', 'c_ai': '#0A84FF' }[m.senderId] || 'var(--text-2)';
@@ -368,7 +390,12 @@ function msgRow(conv, m) {
   }
 
   let contentHtml;
-  if (m.images && m.images.length) {
+  if (m.redpacket || m.transfer || m.relativeCard) {
+    /* 红包 / 转账 / 亲属卡 卡片气泡 */
+    contentHtml = walletCardHTML(m);
+  } else if (m.location) {
+    contentHtml = `<button class="msg-location"><span class="loc-map"></span><span class="loc-info"><span class="loc-name">${escapeHtml(m.location.name)}</span><span class="loc-addr">${escapeHtml(m.location.address || '当前位置')}</span></span></button>`;
+  } else if (m.images && m.images.length) {
     contentHtml = `<img class="msg-image" src="${m._thumb || ''}" data-photo="${m.images[0]}">`;
   } else {
     contentHtml = `<div class="bubble">${m.quote ? `<div class="msg-quote"><span>${escapeHtml(m.quote.author)}: ${escapeHtml(m.quote.text)}</span></div>` : ''}<span class="msg-text">${renderRich(m.content || '')}</span>${m.edited ? '<span class="msg-edited">已编辑</span>' : ''}</div>`;
@@ -376,6 +403,13 @@ function msgRow(conv, m) {
 
   const statusHtml = mine ? `<div class="msg-status" data-status="${m.status || 'sent'}">${statusIcon(m.status)}</div>` : '';
   row.innerHTML = `${avatarHtml}<div class="msg-main">${senderLabel}<div class="msg-bubble-wrap">${contentHtml}${statusHtml}</div><div class="msg-time">${fmtTime(m.timestamp)}</div></div>`;
+
+  // 红包/转账/亲属卡：点击领取或查看详情
+  const card = row.querySelector('.msg-wallet-card');
+  if (card) card.onclick = () => onWalletCardTap(conv, m);
+  // 位置消息：点击查看大图（Toast 演示）
+  const loc = row.querySelector('.msg-location');
+  if (loc) loc.onclick = () => toast(`位置：${m.location.name}${m.location.address ? ' · ' + m.location.address : ''}`);
 
   // 图片消息懒加载缩略图
   const img = row.querySelector('.msg-image');
@@ -390,6 +424,217 @@ function msgRow(conv, m) {
   // 长按菜单
   bindMsgLongPress(row, conv, m);
   return row;
+}
+
+/* ---------- 红包/转账/亲属卡卡片气泡 ---------- */
+function walletCardHTML(m) {
+  if (m.redpacket) {
+    const rp = m.redpacket;
+    return `<button class="msg-wallet-card rp" type="button">
+      <span class="mwc-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="6" width="17" height="14" rx="2.6" fill="rgba(255,255,255,0.2)" stroke="#fff" stroke-width="1.6"/><path d="M3.8 9.6h16.4" stroke="#fff" stroke-width="1.6"/><path d="m6.2 9.6 5.8 4.9 5.8-4.9" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="mwc-main"><span class="mwc-title">${escapeHtml(rp.blessing || '恭喜发财，大吉大利')}</span><span class="mwc-sub">微信红包</span><span class="mwc-status">${escapeHtml(rp.status)}</span></span>
+    </button>`;
+  }
+  if (m.transfer) {
+    const tf = m.transfer;
+    return `<button class="msg-wallet-card tf" type="button">
+      <span class="mwc-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10h10l-3.2-3.4"/><path d="M17 14H7l3.2 3.4"/></svg></span>
+      <span class="mwc-main"><span class="mwc-title">¥${formatMoney(tf.amount)}</span><span class="mwc-sub">${escapeHtml(tf.note || '转账')}</span><span class="mwc-status">${escapeHtml(tf.status)}</span></span>
+    </button>`;
+  }
+  if (m.relativeCard) {
+    const st = m.relativeCard.status || '待领取';
+    return `<button class="msg-wallet-card rc" type="button">
+      <span class="mwc-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="7" width="17" height="11" rx="2" stroke="#fff" stroke-width="1.6"/><path d="M3.5 11h17" stroke="#fff" stroke-width="1.6"/></svg></span>
+      <span class="mwc-main"><span class="mwc-title">亲属卡</span><span class="mwc-sub">亲情消费我买单</span><span class="mwc-status">${escapeHtml(st)}</span></span>
+    </button>`;
+  }
+  return '';
+}
+
+/* 点击卡片：我发的/已处理 → 详情；对方发的待处理 → 领取流 */
+async function onWalletCardTap(conv, m) {
+  const mine = m.role === 'user';
+  if (m.redpacket) {
+    if (!mine && m.redpacket.status === '待领取') return claimRedPacket(conv, m);
+    return openMsgDetail(nav, { kind: 'redpacket', msg: m });
+  }
+  if (m.transfer) {
+    if (!mine && m.transfer.status === '待收款') return confirmTransfer(conv, m);
+    return openMsgDetail(nav, { kind: 'transfer', msg: m });
+  }
+  if (m.relativeCard) {
+    if (!mine && m.relativeCard.status === '待领取') return claimRelativeMsg(conv, m);
+    return openMsgDetail(nav, { kind: 'transfer', msg: { ...m, transfer: { amount: 0, note: '亲属卡', status: m.relativeCard.status } } });
+  }
+}
+
+/* ---------- 领取对方红包 ---------- */
+function claimRedPacket(conv, m) {
+  haptic(8);
+  const sh = sheet({
+    title: '',
+    build(body, close) {
+      body.innerHTML = `
+        <div class="rp-open-cover">
+          <div class="avatar av-sil" style="width:46px;height:46px"></div>
+          <b>${escapeHtml(conv.name)}的红包</b>
+          <i>${escapeHtml(m.redpacket.blessing || '恭喜发财，大吉大利')}</i>
+          <span class="rp-open-amt">¥${formatMoney(m.redpacket.amount)}</span>
+          <button id="rp-open-btn" type="button">開</button>
+          <em>领取的红包将存入零钱，可在「钱包」中查看</em>
+        </div>`;
+      body.querySelector('#rp-open-btn').onclick = async () => {
+        close();
+        m.redpacket.status = '已领取';
+        m.redpacket.openedBy = '我';
+        m.redpacket.openedAt = Date.now();
+        await DB.put('messages', m);
+        await Wallet.update(w => income(w, m.redpacket.amount));
+        await Bill.add({ kind: '红包', title: `红包 · ${m.redpacket.blessing || ''}`, amount: m.redpacket.amount, status: '已存入零钱', friendName: conv.name });
+        haptic(10);
+        await appendReceiptMsg(conv, `你领取了「${conv.name}」的红包 ¥${formatMoney(m.redpacket.amount)}，已存入零钱`);
+        refreshMsgRow(conv, m);
+        toast(`红包 ¥${formatMoney(m.redpacket.amount)} 已存入零钱`);
+      };
+    },
+  });
+  void sh;
+}
+
+/* ---------- 确认收款对方转账 ---------- */
+async function confirmTransfer(conv, m) {
+  haptic(8);
+  const tf = m.transfer;
+  const ok = await dialog({
+    title: '确认收款',
+    message: `${conv.name} 向你转账\n¥${formatMoney(tf.amount)}\n${tf.note || ''}`,
+    buttons: [{ text: '退还' }, { text: '确认收款', value: true, bold: true }],
+  });
+  if (!ok) {
+    m.transfer.status = '已退还';
+    await DB.put('messages', m);
+    await appendReceiptMsg(conv, `你退还了「${conv.name}」的转账 ¥${formatMoney(tf.amount)}`);
+    refreshMsgRow(conv, m);
+    toast('已退还转账');
+    return;
+  }
+  m.transfer.status = '已收款';
+  m.transfer.confirmedAt = Date.now();
+  await DB.put('messages', m);
+  await Wallet.update(w => income(w, tf.amount));
+  await Bill.add({ kind: '转账', title: `来自 ${conv.name} 的转账`, amount: tf.amount, status: '已存入零钱', friendName: conv.name, note: tf.note });
+  haptic(10);
+  await appendReceiptMsg(conv, `你已收取「${conv.name}」的转账 ¥${formatMoney(tf.amount)}，已存入零钱`);
+  refreshMsgRow(conv, m);
+  toast(`转账 ¥${formatMoney(tf.amount)} 已存入零钱`);
+}
+
+/* ---------- 领取/退还对方赠送的亲属卡 ---------- */
+async function claimRelativeMsg(conv, m) {
+  haptic(8);
+  const cardId = m.relativeCard.cardId;
+  const w = await Wallet.load();
+  const card = w.relativeCards.find(c => c.id === cardId);
+  const limit = card ? card.monthlyLimit : 0;
+  const ok = await dialog({
+    title: '领取亲属卡',
+    message: `${conv.name} 赠送给你一张亲属卡\n每月消费额度 ¥${formatMoney(limit)}\n领取后消费由TA买单`,
+    buttons: [{ text: '退还' }, { text: '领取', value: true, bold: true }],
+  });
+  if (!ok) {
+    m.relativeCard.status = '已退还';
+    await DB.put('messages', m);
+    await Wallet.update(x => ({ ...x, relativeCards: x.relativeCards.filter(c => c.id !== cardId) }));
+    await appendReceiptMsg(conv, `你退还了「${conv.name}」赠送的亲属卡`);
+    refreshMsgRow(conv, m);
+    toast('已退还亲属卡');
+    return;
+  }
+  m.relativeCard.status = '已领取';
+  await DB.put('messages', m);
+  await Wallet.update(x => ({ ...x, relativeCards: x.relativeCards.map(c => (c.id === cardId ? { ...c, status: 'claimed', claimedAt: Date.now() } : c)) }));
+  haptic(10);
+  await appendReceiptMsg(conv, `你已领取「${conv.name}」的亲属卡，每月额度 ¥${formatMoney(limit)}`);
+  refreshMsgRow(conv, m);
+  toast('亲属卡已领取');
+}
+
+/* ---------- 发送钱包消息（红包/转账/亲属卡/位置） ---------- */
+async function sendWalletMsg(conv, payload, previewText) {
+  const msg = {
+    id: uid('m'), conversationId: conv.id, role: 'user',
+    content: previewText || '', timestamp: Date.now(), status: 'sent',
+    ...payload,
+  };
+  await DB.put('messages', msg);
+  if (currentChat && currentChat.conv.id === conv.id) {
+    currentChat.msgs.push(msg);
+    currentChat.listEl.appendChild(msgRow(conv, msg));
+    scrollToBottom();
+  }
+  conv.lastMessage = previewText || '[消息]';
+  conv.updatedAt = Date.now();
+  await DB.put('conversations', conv);
+  Bus.emit('wechat:refresh');
+  return msg;
+}
+
+/* ---------- 对方自动处理我发的红包/转账/亲属卡（AI 模拟） ---------- */
+async function simulateFriendClaim(conv, msg, kind) {
+  const delay = 2600 + Math.random() * 3200;
+  setTimeout(async () => {
+    const fresh = await DB.get('messages', msg.id);
+    if (!fresh) return;
+    if (kind === 'redpacket' && fresh.redpacket?.status === '待领取') {
+      fresh.redpacket.status = '已领取';
+      fresh.redpacket.openedBy = conv.name;
+      fresh.redpacket.openedAt = Date.now();
+      await DB.put('messages', fresh);
+      await appendReceiptMsg(conv, `「${conv.name}」领取了你的红包 ¥${formatMoney(fresh.redpacket.amount)}`);
+      await Bill.add({ kind: '红包', title: `红包 · ${fresh.redpacket.blessing || ''}`, amount: 0, status: `${conv.name}已领取`, friendName: conv.name, note: `发出 ¥${formatMoney(fresh.redpacket.amount)}` });
+    } else if (kind === 'transfer' && fresh.transfer?.status === '待收款') {
+      fresh.transfer.status = '已收款';
+      fresh.transfer.confirmedAt = Date.now();
+      await DB.put('messages', fresh);
+      await appendReceiptMsg(conv, `「${conv.name}」已收取你的转账 ¥${formatMoney(fresh.transfer.amount)}`);
+      await Bill.add({ kind: '转账', title: `转账给 ${conv.name}`, amount: 0, status: '对方已收款', friendName: conv.name, note: `¥${formatMoney(fresh.transfer.amount)} · ${fresh.transfer.note || ''}` });
+    } else if (kind === 'relativeCard' && fresh.relativeCard?.status === '待领取') {
+      fresh.relativeCard.status = '已领取';
+      await DB.put('messages', fresh);
+      await Wallet.update(w => ({ ...w, relativeCards: w.relativeCards.map(c => (c.id === fresh.relativeCard.cardId ? { ...c, status: 'claimed', claimedAt: Date.now() } : c)) }));
+      await appendReceiptMsg(conv, `「${conv.name}」已领取你的亲属卡`);
+      /* 30% 概率对方用亲属卡消费一笔（演示） */
+      if (Math.random() < 0.3) {
+        setTimeout(async () => {
+          const use = round2(1 + Math.random() * Math.min(30, Math.max(1, (await Wallet.load()).relativeCards.find(c => c.id === fresh.relativeCard.cardId)?.monthlyLimit || 10)));
+          await Wallet.update(w => ({ ...w, relativeCards: w.relativeCards.map(c => (c.id === fresh.relativeCard.cardId ? { ...c, used: round2(c.used + use) } : c)) }));
+          await appendReceiptMsg(conv, `「${conv.name}」使用亲属卡消费了 ¥${formatMoney(use)}`);
+        }, 3200);
+      }
+    } else return;
+    if (currentChat && currentChat.conv.id === conv.id) {
+      refreshMsgRow(conv, fresh);
+      scrollToBottom();
+    }
+    Bus.emit('wechat:refresh');
+  }, delay);
+}
+
+/* ---------- 回执消息（居中灰胶囊） ---------- */
+async function appendReceiptMsg(conv, text) {
+  const msg = {
+    id: uid('m'), conversationId: conv.id, role: 'assistant',
+    content: '', receipt: { text }, timestamp: Date.now(), status: 'sent',
+  };
+  await DB.put('messages', msg);
+  if (currentChat && currentChat.conv.id === conv.id) {
+    currentChat.msgs.push(msg);
+    currentChat.listEl.appendChild(msgRow(conv, msg));
+    scrollToBottom();
+  }
+  conv.updatedAt = Date.now();
+  await DB.put('conversations', conv);
 }
 
 function statusIcon(status) {
@@ -451,8 +696,70 @@ function bindMsgLongPress(row, conv, m) {
 }
 
 function refreshMsgRow(conv, m) {
+  /* 同步内存消息数组（防止后续 DB.put 用陈旧对象覆盖钱包状态等并发更新） */
+  if (currentChat && currentChat.conv.id === conv.id) {
+    const idx = currentChat.msgs.findIndex(x => x.id === m.id);
+    if (idx >= 0) currentChat.msgs[idx] = m;
+  }
   const row = currentChat?.listEl?.querySelector(`[data-id="${m.id}"]`);
   if (row) row.replaceWith(msgRow(conv, m));
+}
+
+/* ---------- AI 回复标记解析（[红包:祝福|金额] / [转账:金额|备注] / [亲属卡:额度|备注] / [位置:名]） ---------- */
+function hasWalletMark(text) { return /\[(红包|转账|亲属卡|位置)[:：]/.test(String(text || '')); }
+
+function splitWalletMsgs(conv, base) {
+  const text = String(base.content || '');
+  const out = [];
+  const numRe = /(\d+(?:\.\d{1,2})?)/;
+  const numOf = (s) => { const mm = numRe.exec(String(s || '')); return mm ? round2(Number(mm[1])) : 0; };
+  const clean = (s) => String(s || '').replace(numRe, '').replace(/元|额度|每月|块/g, '').replace(/^[：:\s]+/, '').replace(/[\s：:]+$/, '').trim();
+  const mk = (props) => ({
+    id: uid('m'), conversationId: conv.id, role: 'assistant',
+    senderId: base.senderId, senderName: base.senderName,
+    timestamp: Date.now(), status: 'sent', ...props,
+  });
+  const pushText = (t) => { const s = String(t || '').trim(); if (s) out.push(mk({ content: s })); };
+
+  let last = 0, m;
+  WALLET_MSG_RE.lastIndex = 0;
+  while ((m = WALLET_MSG_RE.exec(text)) !== null) {
+    pushText(text.slice(last, m.index));
+    if (m[1] !== undefined) {
+      /* 位置 */
+      const name = m[1].trim();
+      out.push(mk({ content: `[位置] ${name}`, location: { name, address: '对方共享的位置' } }));
+    } else if (m[2] !== undefined) {
+      /* 红包：[红包:祝福语|金额] */
+      const [blessing, amountRaw] = m[2].split('|');
+      const amount = numOf(amountRaw);
+      const bl = (blessing || '').trim() || '恭喜发财，大吉大利';
+      if (amount > 0 && amount <= 200) out.push(mk({ content: `[红包] ${bl}`, redpacket: { amount, blessing: bl, status: '待领取' } }));
+      else pushText(m[0]);
+    } else if (m[3] !== undefined) {
+      /* 转账：[转账:金额|备注] */
+      const [amountRaw, noteRaw] = m[3].split('|');
+      let amount = numOf(amountRaw);
+      let note = clean(noteRaw);
+      if (amount <= 0 && note) { const nm = numRe.exec(note); if (nm) { amount = round2(Number(nm[1])); note = clean(note.replace(nm[1], '')) || '转账'; } }
+      if (amount > 0 && amount <= 50000) out.push(mk({ content: `[转账] ¥${formatMoney(amount)} ${note}`, transfer: { amount, note: note || '转账', status: '待收款' } }));
+      else pushText(m[0]);
+    } else if (m[4] !== undefined) {
+      /* 亲属卡：[亲属卡:额度|备注]（对方赠送给我） */
+      const [a, b] = m[4].split('|');
+      let amount = numOf(a);
+      let remark = clean(a);
+      if (amount <= 0) { amount = numOf(b); remark = remark || clean(b); }
+      if (amount > 0 && amount <= 3000) {
+        const cardId = uid('rc');
+        Wallet.update(w => ({ ...w, relativeCards: [...w.relativeCards, { id: cardId, friendId: conv.contactId, friendName: conv.name, monthlyLimit: amount, used: 0, direction: 'received', status: 'pending', createdAt: Date.now() }] }));
+        out.push(mk({ content: remark || `${conv.name}赠送的亲属卡`, relativeCard: { cardId, status: '待领取' } }));
+      } else pushText(m[0]);
+    }
+    last = m.index + m[0].length;
+  }
+  pushText(text.slice(last));
+  return out.length ? out : null;
 }
 
 /* ---------- 轻量 Markdown 渲染（AI回复） ---------- */
@@ -557,9 +864,16 @@ async function llmReply(conv, contact, userMsg, secondReply = false) {
   chat.streaming = true;
   showTyping(conv, contact?.name);
 
-  // 标记我的消息为已读
+  // 标记我的消息为已读（与库中最新对象合并后写入，避免陈旧内存对象覆盖钱包状态）
   for (const m of chat.msgs) {
-    if (m.role === 'user' && m.status === 'sent') { m.status = 'read'; await DB.put('messages', m); refreshMsgRow(conv, m); }
+    if (m.role === 'user' && m.status === 'sent') {
+      const fresh = await DB.get('messages', m.id);
+      const target = fresh || m;
+      target.status = 'read';
+      await DB.put('messages', target);
+      if (fresh) Object.assign(m, fresh, { status: 'read' });
+      refreshMsgRow(conv, m);
+    }
   }
 
   // 创建流式消息行
@@ -587,10 +901,23 @@ async function llmReply(conv, contact, userMsg, secondReply = false) {
     if (!streamMsg.content.trim()) throw new Error('回复为空');
     streamMsg.status = 'sent';
     streamMsg.timestamp = Date.now();
-    await DB.put('messages', streamMsg);
-    chat.msgs.push(streamMsg);
-    if (row?.isConnected) row.replaceWith(msgRow(conv, streamMsg));
-    conv.lastMessage = streamMsg.content.slice(0, 60);
+    /* AI 标记解析：红包/转账/亲属卡/位置 → 拆分多条消息落库渲染 */
+    const segs = hasWalletMark(streamMsg.content) ? splitWalletMsgs(conv, streamMsg) : null;
+    if (segs) {
+      row?.remove();
+      for (const sm of segs) {
+        await DB.put('messages', sm);
+        chat.msgs.push(sm);
+        chat.listEl.appendChild(msgRow(conv, sm));
+      }
+      conv.lastMessage = previewText(segs[segs.length - 1].content).slice(0, 60);
+      scrollToBottom();
+    } else {
+      await DB.put('messages', streamMsg);
+      chat.msgs.push(streamMsg);
+      if (row?.isConnected) row.replaceWith(msgRow(conv, streamMsg));
+      conv.lastMessage = streamMsg.content.slice(0, 60);
+    }
     conv.updatedAt = Date.now();
     await DB.put('conversations', conv);
   } catch (e) {
@@ -620,7 +947,7 @@ async function llmReply(conv, contact, userMsg, secondReply = false) {
 }
 
 async function callLLM(conv, contact, onDelta) {
-  const history = await DB.byIndex('messages', 'conversationId', conv.id);
+  const history = await DB.byIndex('messages', 'conversationId', conv.id, false);
   const recent = history.slice(-20);
 
   /* 图片识别：最近一条带图的用户消息，若无缓存描述则先识别（自定义图像API/内置视觉） */
@@ -647,9 +974,9 @@ async function callLLM(conv, contact, onDelta) {
   if (contact?.prompt) {
     apiMsgs.push({ role: 'system', content: conv.type === 'group'
       ? `${contact.prompt}\n（当前你在群聊「${conv.name}」中，以「${contact.name}」的身份简短回复，一般不超过80字。）`
-      : contact.prompt });
+      : contact.prompt + WALLET_MARK_HINT });
   } else {
-    apiMsgs.push({ role: 'system', content: '你是用户的智能助手朋友，回复自然、简洁、友好，使用中文。' });
+    apiMsgs.push({ role: 'system', content: '你是用户的智能助手朋友，回复自然、简洁、友好，使用中文。' + WALLET_MARK_HINT });
   }
   for (const m of recent) {
     if (m.role === 'user') {
@@ -719,6 +1046,10 @@ function showPlusPanel(conv, body) {
       <button class="pp-item" data-act="album"><div class="pp-icon" style="background:#0A84FF"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.7"/><path d="M21 15.5l-4.5-4.5-7 7"/></svg></div><span>相册</span></button>
       <button class="pp-item" data-act="camera"><div class="pp-icon" style="background:#FF9500"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l2-3h6l2 3h3a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div><span>拍照</span></button>
       <button class="pp-item" data-act="file"><div class="pp-icon" style="background:#34C759"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div><span>文件</span></button>
+      <button class="pp-item" data-act="redpacket"><div class="pp-icon" style="background:linear-gradient(135deg,#ff8a6b,#fa5151)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="6" width="17" height="14" rx="2.6" fill="rgba(255,255,255,0.2)" stroke="#fff" stroke-width="1.6"/><path d="M3.8 9.6h16.4" stroke="#fff" stroke-width="1.6"/><path d="m6.2 9.6 5.8 4.9 5.8-4.9" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span>红包</span></button>
+      <button class="pp-item" data-act="transfer"><div class="pp-icon" style="background:linear-gradient(135deg,#ffc93d,#ff9d00)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10h10l-3.2-3.4"/><path d="M17 14H7l3.2 3.4"/></svg></div><span>转账</span></button>
+      <button class="pp-item" data-act="relcard"><div class="pp-icon" style="background:linear-gradient(135deg,#4cd97b,#07c160)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3.5" y="7" width="17" height="11" rx="2" stroke="#fff" stroke-width="1.7"/><path d="M3.5 11h17" stroke="#fff" stroke-width="1.7"/></svg></div><span>亲属卡</span></button>
+      <button class="pp-item" data-act="location"><div class="pp-icon" style="background:linear-gradient(135deg,#64d2ff,#0a84ff)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></div><span>位置</span></button>
     </div>`;
   body.parentNode.insertBefore(panel, currentChat.inputBar);
   panel.querySelector('[data-act="album"]').onclick = async () => {
@@ -750,6 +1081,67 @@ function showPlusPanel(conv, body) {
     panel.remove();
     toast('演示环境暂不支持发送文件');
   };
+  /* 红包：仅单聊，发送后对方延时自动领取 */
+  panel.querySelector('[data-act="redpacket"]').onclick = () => {
+    panel.remove();
+    if (conv.type === 'group') { toast('红包仅支持单聊发送'); return; }
+    openRedPacketSend(nav, {
+      target: { id: conv.contactId, name: conv.name },
+      onSent: (amount, blessing) => {
+        sendWalletMsg(conv, { redpacket: { amount, blessing, status: '待领取' } }, `[红包] ${blessing}`)
+          .then(msg => simulateFriendClaim(conv, msg, 'redpacket'));
+      },
+    });
+  };
+  /* 转账 */
+  panel.querySelector('[data-act="transfer"]').onclick = () => {
+    panel.remove();
+    if (conv.type === 'group') { toast('转账仅支持单聊发送'); return; }
+    openTransferSend(nav, {
+      target: { id: conv.contactId, name: conv.name },
+      onSent: (amount, note) => {
+        sendWalletMsg(conv, { transfer: { amount, note, status: '待收款' } }, `[转账] ¥${formatMoney(amount)}`)
+          .then(msg => simulateFriendClaim(conv, msg, 'transfer'));
+      },
+    });
+  };
+  /* 亲属卡赠送 */
+  panel.querySelector('[data-act="relcard"]').onclick = () => {
+    panel.remove();
+    if (conv.type === 'group') { toast('亲属卡仅支持单聊赠送'); return; }
+    openRelativeGift(nav, {
+      target: { id: conv.contactId, name: conv.name },
+      onSent: (card, note) => {
+        sendWalletMsg(conv, { relativeCard: { cardId: card.id, status: '待领取' } }, note || '亲属卡')
+          .then(msg => simulateFriendClaim(conv, msg, 'relativeCard'));
+      },
+    });
+  };
+  /* 位置共享 */
+  panel.querySelector('[data-act="location"]').onclick = () => {
+    panel.remove();
+    const PLACES = [
+      ['公司', '科技园南区 A 座'], ['家', '幸福里小区 8 号楼'], ['星巴克', '万象城 1F-108'],
+      ['市图书馆', '三层阅览区'], ['健身房', '来福士店 4F'], ['机场 T2', '出发层 6 号门'],
+    ];
+    const sh = sheet({
+      title: '发送当前位置',
+      build(sb, close) {
+        sb.innerHTML = `<div class="inset-group"><div class="inset-card">${PLACES.map(([n, a], i) => `
+          <div class="row" data-i="${i}"><div class="row-icon" style="background:linear-gradient(135deg,#64d2ff,#0a84ff)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></div>
+          <div class="row-label">${n}<div class="row-sub">${a}</div></div><div class="row-chevron">›</div></div>`).join('')}</div></div>`;
+        sb.querySelectorAll('.row[data-i]').forEach(r => {
+          r.onclick = () => {
+            close();
+            const [n, a] = PLACES[+r.dataset.i];
+            sendWalletMsg(conv, { location: { name: n, address: a } }, `[位置] ${n}`);
+            toast(`已发送位置：${n}`);
+          };
+        });
+      },
+    });
+    void sh;
+  };
 }
 
 /* ---------- 聊天页右上角菜单 ---------- */
@@ -773,7 +1165,7 @@ async function chatMenu(conv) {
     }
   }
   if (v === 'export') {
-    const msgs = await DB.byIndex('messages', 'conversationId', conv.id);
+    const msgs = await DB.byIndex('messages', 'conversationId', conv.id, false);
     downloadJSON({ conversation: conv.name, exportedAt: new Date().toISOString(), messages: msgs }, `聊天记录-${conv.name}-${Date.now()}.json`);
     toast('已导出 JSON');
   }
@@ -1207,6 +1599,17 @@ async function renderMe() {
   body.appendChild(profile);
 
   const cfg = await getApiConfig();
+
+  /* 钱包入口（支付系统：零钱/零钱通/红包/转账/亲属卡/银行卡/账单） */
+  const w = await Wallet.load();
+  const payGroup = el('div', 'inset-group');
+  payGroup.innerHTML = `<div class="inset-card">
+    <div class="row" id="me-wallet"><div class="row-icon" style="background:linear-gradient(135deg,#4cd97b,#07c160)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="6.5" width="18" height="13" rx="2.4" stroke="#fff" stroke-width="1.7"/><path d="M3 10.5h18" stroke="#fff" stroke-width="1.7"/><circle cx="16.5" cy="15" r="1.4" fill="#fff"/></svg></div>
+      <div class="row-label">钱包</div><div class="row-val">¥${formatMoney(w.balance)}</div><div class="row-chevron"><svg width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg></div></div>
+  </div>`;
+  payGroup.querySelector('#me-wallet').onclick = () => { haptic(4); openWalletHome(nav); };
+  body.appendChild(payGroup);
+
   const group1 = el('div', 'inset-group');
   group1.innerHTML = `<div class="inset-card">
     <div class="row" id="me-api"><div class="row-icon" style="background:#FF9500"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M14.5 6.5a4.5 4.5 0 0 0-6.2 5.5L2.5 17.8l3.7 3.7 5.8-5.8a4.5 4.5 0 0 0 5.5-6.2l-3 3-2.8-.7-.7-2.8z"/></svg></div>

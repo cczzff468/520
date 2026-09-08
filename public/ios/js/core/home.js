@@ -9,11 +9,11 @@ import { toast } from './ui.js';
 
 /* 按使用频率与功能分组编排：小组件旁放时钟/天气，其次是相册/通讯录，第三排工具类，第四排其他
    朋友圈不再单独占桌面图标（与微信深度整合，入口保留在微信「我」页） */
-const GRID_ORDER = ['clock', 'weather', 'photos', 'contacts', 'notes', 'calendar', 'calculator', 'recorder', 'compass', 'themes', 'settings'];
+const GRID_ORDER = ['clock', 'weather', 'photos', 'contacts', 'notes', 'calendar', 'calculator', 'recorder', 'compass', 'themes', 'wechat', 'settings'];
 const DOCK_ORDER = ['browser', 'camera', 'music'];
-/* 已下架应用：微信 APP 已按用户要求从主界面移除；
-   存量用户 homeLayout 里可能仍存有这些 id，渲染前统一剔除 */
-const RETIRED_APPS = new Set(['wechat']);
+/* 已下架应用：无（微信已回归为「信息」APP，不再退休）
+   存量用户 homeLayout 里可能仍存非法 id，渲染前统一剔除 */
+const RETIRED_APPS = new Set([]);
 const LIVE_ICONS = ['clock', 'calendar'];
 const X_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 

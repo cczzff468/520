@@ -1,0 +1,374 @@
+/* ============ 钱包（支付系统）样式 · 0525 移植版 ============ */
+
+/* 通用按钮 */
+.wallet-btn{
+  display:flex; align-items:center; justify-content:center;
+  margin:16px 16px 0; width:calc(100% - 32px);
+  padding:14px; border-radius:14px; border:none;
+  font-size:16px; font-weight:600; font-family:inherit; cursor:pointer;
+  transition:transform .16s ease, opacity .16s ease;
+}
+.wallet-btn:active{ transform:scale(.985); opacity:.75; }
+.wallet-btn.primary{ background:#07C160; color:#fff; box-shadow:0 6px 18px rgba(7,193,96,.32); }
+.wallet-btn.ghost{ background:var(--fill); color:#07C160; font-weight:600; }
+.wallet-btn.danger{ background:var(--card); color:var(--danger); box-shadow:var(--shadow-card); }
+
+/* 行图标内单字/符号 */
+.wi-glyph{ font-size:15px; font-weight:700; color:#fff; font-style:normal; letter-spacing:0; }
+
+/* 表单 */
+.wl-form{ padding:0 0 24px; }
+.tf-amount-label{ font-size:13.5px; color:var(--text-2); padding:18px 22px 6px; }
+.wl-avail{ font-size:12.5px; color:var(--text-3); padding:8px 22px 2px; }
+.wl-err{ min-height:18px; font-size:13px; color:var(--danger); text-align:center; padding-top:8px; }
+.wl-tip{ font-size:12px; color:var(--text-3); line-height:1.7; text-align:center; padding:18px 30px; }
+.wallet-amount-input{
+  display:flex; align-items:center; gap:6px;
+  margin:6px 22px 0; padding:12px 4px;
+  border-bottom:1.5px solid var(--sep);
+}
+.wallet-amount-input span{ font-size:34px; font-weight:600; color:var(--text); }
+.wallet-amount-input input{
+  flex:1; min-width:0; border:none; outline:none; background:none;
+  font-size:42px; font-weight:600; color:var(--text); font-family:inherit;
+  -moz-appearance:textfield; appearance:textfield;
+}
+.wallet-amount-input input::-webkit-inner-spin-button, .wallet-amount-input input::-webkit-outer-spin-button{ -webkit-appearance:none; }
+.wallet-amount-input input::placeholder{ color:var(--text-3); }
+
+/* ============ 钱包主页 ============ */
+.wallet-page{ background:var(--bg); }
+.wl-hero{
+  margin:10px 16px 14px; padding:22px 18px 16px;
+  border-radius:18px;
+  background:linear-gradient(135deg,#0b2e1c,#0a84ff22), #0e5c33;
+  background-blend-mode:normal;
+  color:#fff;
+  box-shadow:0 10px 26px rgba(14,92,51,.28);
+}
+.wl-hero-top{ display:flex; align-items:center; gap:10px; }
+.wl-hero-act{
+  flex:none; display:flex; flex-direction:column; align-items:center; gap:7px;
+  width:62px; padding:12px 0 10px; border:none; border-radius:13px;
+  background:rgba(255,255,255,.14); color:#fff;
+  font-size:12px; font-family:inherit; cursor:pointer;
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+  transition:transform .16s ease, background .16s ease;
+}
+.wl-hero-act:active{ transform:scale(.93); background:rgba(255,255,255,.26); }
+.wl-hero-act svg{ width:24px; height:24px; }
+.wl-hero-bal{ flex:1; min-width:0; text-align:center; }
+.wl-bal-num{ font-size:30px; font-weight:700; letter-spacing:-.5px; }
+.wl-bal-num span{ font-size:17px; font-weight:600; margin-right:2px; }
+.wl-bal-sub{ font-size:11.5px; color:rgba(255,255,255,.72); margin-top:5px; line-height:1.5; }
+.wl-hero-month{ font-size:11.5px; color:rgba(255,255,255,.6); margin-top:14px; text-align:center; }
+
+/* 零钱页余额卡 */
+.wl-balance-card{ padding:30px 16px 26px; text-align:center; }
+.wl-b-label{ font-size:13.5px; color:var(--text-2); }
+.wl-b-num{ font-size:38px; font-weight:700; margin-top:8px; letter-spacing:-.5px; }
+
+/* ============ 零钱通 ============ */
+.fund-hero{ padding:30px 22px 24px; text-align:center; }
+.fund-label{ font-size:13.5px; color:var(--text-2); }
+.fund-num{ font-size:38px; font-weight:700; margin-top:8px; letter-spacing:-.5px; }
+.fund-sub{ font-size:12.5px; color:var(--text-3); margin-top:7px; }
+.fund-actions{ display:flex; gap:12px; margin-top:20px; }
+.fund-actions .wallet-btn{ margin:0; width:auto; flex:1; padding:12px; }
+.fund-yield-row{ font-size:12.5px; color:#07C160; margin-top:14px; font-weight:600; }
+
+/* ============ 付款码 / 收款码 ============ */
+.paycode-body{ background:#F2F2F7; }
+html[data-theme="dark"] .paycode-body{ background:#000; }
+.paycode-card{
+  margin:12px 22px; padding:20px 18px 16px;
+  background:#fff; border-radius:16px;
+  display:flex; flex-direction:column; align-items:center;
+  box-shadow:var(--shadow-card);
+}
+.paycode-me{ display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text); font-weight:600; }
+.paycode-barcode{ width:100%; height:64px; object-fit:contain; margin:16px 0 4px; }
+.paycode-qr{ width:200px; height:200px; margin:8px 0; }
+.paycode-amount{ font-size:14px; color:var(--text-2); margin-top:4px; }
+.paycode-refresh{ display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-3); margin-top:8px; }
+.paycode-note{ text-align:center; font-size:15px; font-weight:600; color:var(--text); margin-top:16px; }
+.paycode-switch{ margin-top:14px; }
+
+/* ============ 扫一扫 ============ */
+.scanpay-body{ background:#1C1C1E; }
+.scan-viewfinder{
+  position:relative; margin:26px auto 0;
+  width:250px; height:250px; border-radius:18px;
+  background:#2C2C2E;
+  overflow:hidden;
+}
+.scan-viewfinder i{ position:absolute; width:26px; height:26px; border:3px solid #07C160; border-radius:4px; }
+.scan-viewfinder .tl{ top:10px; left:10px; border-right:none; border-bottom:none; border-top-left-radius:8px; }
+.scan-viewfinder .tr{ top:10px; right:10px; border-left:none; border-bottom:none; border-top-right-radius:8px; }
+.scan-viewfinder .bl{ bottom:10px; left:10px; border-right:none; border-top:none; border-bottom-left-radius:8px; }
+.scan-viewfinder .br{ bottom:10px; right:10px; border-left:none; border-top:none; border-bottom-right-radius:8px; }
+.scan-laser{
+  position:absolute; left:12px; right:12px; top:50%;
+  height:2px; background:linear-gradient(90deg,transparent,#34C759,transparent);
+  animation:scanLaser 2.2s ease-in-out infinite;
+}
+@keyframes scanLaser{ 0%,100%{ top:22%; } 50%{ top:74%; } }
+.scan-tip{ position:absolute; bottom:-30px; left:0; right:0; text-align:center; font-size:12px; color:rgba(255,255,255,.6); }
+.scan-merchant{ text-align:center; font-size:17px; font-weight:600; color:var(--text); padding:16px 0 2px; }
+
+/* ============ 账单 ============ */
+.bills-tabs{
+  display:flex; gap:8px; padding:12px 16px 4px;
+}
+.bills-tabs button{
+  flex:1; padding:8px 0; border:none; border-radius:100px;
+  background:var(--fill); color:var(--text-2);
+  font-size:13px; font-family:inherit; cursor:pointer;
+  transition:background .18s ease, color .18s ease;
+}
+.bills-tabs button.on{ background:#07C160; color:#fff; font-weight:600; }
+.bills-sum{ text-align:center; font-size:12.5px; color:var(--text-3); padding:6px 0 12px; }
+.bills-empty{ text-align:center; color:var(--text-3); font-size:13.5px; padding:34px 0; }
+.bill-amount{ flex:none; font-size:16px; font-weight:600; color:var(--text); }
+.bill-amount.in{ color:#07C160; }
+
+/* 账单/消息详情头 */
+.billd-hero{ display:flex; flex-direction:column; align-items:center; padding:28px 16px 20px; }
+.billd-icon{
+  width:52px; height:52px; border-radius:14px;
+  background:linear-gradient(135deg,#8aa2c4,#576b95);
+  color:#fff; font-size:22px; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+}
+.billd-amount{ font-size:32px; font-weight:700; margin-top:12px; letter-spacing:-.5px; }
+.billd-amount.in{ color:#07C160; }
+.billd-status{ font-size:12.5px; color:var(--text-3); margin-top:5px; }
+
+/* ============ 支付成功页 ============ */
+.payok-body{ display:flex; flex-direction:column; align-items:center; padding-top:16vh; }
+.payok-check{
+  width:76px; height:76px; border-radius:50%;
+  background:linear-gradient(135deg,#34C759,#07C160);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 10px 28px rgba(7,193,96,.36);
+  animation:payokPop .5s var(--ease-spring) both;
+}
+@keyframes payokPop{ from{ transform:scale(.4); opacity:0; } to{ transform:scale(1); opacity:1; } }
+.payok-title{ font-size:17px; font-weight:600; color:var(--text); margin-top:22px; }
+.payok-amount{ font-size:36px; font-weight:700; margin-top:10px; letter-spacing:-.5px; }
+.payok-amount b{ font-weight:700; }
+.payok-sub{ font-size:12.5px; color:var(--text-3); margin-top:8px; }
+.payok-back{ margin-top:44px; }
+
+/* ============ 发红包 ============ */
+.rp-body{ background:#F2F2F7; }
+html[data-theme="dark"] .rp-body{ background:#000; }
+.rp-head{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:26px 0 8px; }
+.rp-head-icon{
+  width:56px; height:56px; border-radius:16px;
+  background:linear-gradient(135deg,#ff8a6b,#fa5151);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 8px 22px rgba(250,81,81,.34);
+}
+.rp-head-title{ font-size:19px; font-weight:700; color:var(--text); }
+.rp-amount-input{ display:flex; align-items:center; gap:4px; }
+.rp-amount-input span{ font-size:18px; font-weight:600; color:var(--text); }
+.rp-amount-input input{
+  width:110px; border:none; outline:none; background:none; text-align:right;
+  font-size:26px; font-weight:600; color:var(--text); font-family:inherit;
+  -moz-appearance:textfield; appearance:textfield;
+}
+.rp-amount-input input::-webkit-inner-spin-button, .rp-amount-input input::-webkit-outer-spin-button{ -webkit-appearance:none; }
+.rp-amount-max{ font-size:11.5px; color:var(--text-3); padding:7px 16px 10px; border-bottom:.5px solid var(--sep); }
+.rp-input{
+  border:none; outline:none; background:none; text-align:right;
+  font-size:14.5px; color:var(--text); font-family:inherit; flex:1; min-width:0; padding:6px 0;
+}
+.rp-send-btn{ background:linear-gradient(135deg,#ff8a6b,#fa5151); box-shadow:0 8px 22px rgba(250,81,81,.34); }
+.rp-tip{ font-size:12px; color:var(--text-3); text-align:center; padding:12px 30px 0; }
+.rp-target{
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  font-size:12.5px; color:var(--text-3); padding:14px 0 6px;
+}
+
+/* ============ 转账 ============ */
+.tf-hero{ display:flex; flex-direction:column; align-items:center; gap:12px; padding:26px 0 10px; }
+.tf-hero-name{ font-size:14.5px; color:var(--text-2); }
+.transfer-amount{
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  margin:8px 0; padding:18px 0 14px;
+}
+.transfer-cny{ font-size:40px; font-weight:600; color:var(--text); }
+.transfer-amount input{
+  width:190px; border:none; outline:none; background:none; text-align:center;
+  font-size:46px; font-weight:600; color:var(--text); font-family:inherit;
+  -moz-appearance:textfield; appearance:textfield;
+}
+.transfer-amount input::-webkit-inner-spin-button, .transfer-amount input::-webkit-outer-spin-button{ -webkit-appearance:none; }
+.transfer-amount input::placeholder{ color:var(--text-3); }
+.tf-submit-btn{ background:#07C160; }
+
+/* ============ 亲属卡 ============ */
+.rg-hero{ padding:22px 16px 4px; display:flex; justify-content:center; }
+.rg-card-visual{
+  width:78%; padding:18px 16px;
+  border-radius:14px;
+  background:linear-gradient(135deg,#4cd97b,#07c160);
+  color:#fff; box-shadow:0 8px 22px rgba(7,193,96,.3);
+  display:flex; flex-direction:column; gap:5px;
+}
+.rg-card-visual span{ font-size:12px; opacity:.85; letter-spacing:2px; }
+.rg-card-visual b{ font-size:19px; font-weight:700; }
+.rg-card-visual i{ font-size:11.5px; opacity:.8; font-style:normal; }
+.rc-bar{ height:6px; border-radius:3px; background:var(--fill); margin:10px 16px; overflow:hidden; }
+.rc-bar i{ display:block; height:100%; border-radius:3px; background:linear-gradient(90deg,#4cd97b,#07c160); transition:width .4s ease; }
+
+/* ============ 红包/转账消息详情 ============ */
+.msgd-hero{ display:flex; flex-direction:column; align-items:center; padding:28px 16px 18px; }
+.msgd-hero .msgd-icon{
+  width:56px; height:56px; border-radius:16px;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 8px 22px rgba(0,0,0,.18);
+}
+.msgd-hero.rp .msgd-icon{ background:linear-gradient(135deg,#ff8a6b,#fa5151); box-shadow:0 8px 22px rgba(250,81,81,.3); }
+.msgd-hero.tf .msgd-icon{ background:linear-gradient(135deg,#ffc93d,#ff9d00); box-shadow:0 8px 22px rgba(255,157,0,.3); }
+.msgd-amount{ font-size:34px; font-weight:700; margin-top:14px; letter-spacing:-.5px; }
+.msgd-status{ font-size:12.5px; color:var(--text-3); margin-top:6px; }
+
+/* ============ 银行卡 ============ */
+.bankcard-visual{
+  margin:14px 16px; padding:22px 20px 18px;
+  border-radius:16px; color:#fff;
+  display:flex; flex-direction:column; gap:10px;
+  box-shadow:0 10px 26px rgba(26,63,214,.3);
+}
+.bankcard-visual span{ font-size:15px; font-weight:600; }
+.bankcard-visual b{ font-size:20px; font-weight:600; letter-spacing:2.5px; }
+.bankcard-visual i{ font-size:12px; opacity:.8; font-style:normal; text-align:right; }
+.bc-select{
+  border:none; outline:none; background:var(--fill);
+  font-size:14.5px; color:var(--text); font-family:inherit;
+  padding:8px 10px; border-radius:9px; flex:1; min-width:0;
+}
+.bc-tail, .bc-avail{
+  border:none; outline:none; background:none; text-align:right;
+  font-size:14.5px; color:var(--text); font-family:inherit; flex:1; min-width:0; padding:6px 0;
+}
+
+/* ============ 支付密码键盘 ============ */
+.paykbd-mask{
+  position:absolute; inset:0; z-index:950;
+  display:flex; flex-direction:column; justify-content:flex-end;
+  background:rgba(0,0,0,.42);
+  opacity:0; transition:opacity .22s ease;
+}
+.paykbd-mask.show{ opacity:1; }
+.paykbd-sheet{
+  background:rgba(45,45,48,.98);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-radius:22px 22px 0 0;
+  padding:20px 12px calc(14px + env(safe-area-inset-bottom));
+  transform:translateY(100%);
+  transition:transform .28s cubic-bezier(.32,.72,0,1);
+}
+.paykbd-mask.show .paykbd-sheet{ transform:translateY(0); }
+.paykbd-title{ text-align:center; font-size:16px; font-weight:600; color:#fff; }
+.paykbd-desc{ text-align:center; font-size:12.5px; color:rgba(255,255,255,.6); margin-top:6px; }
+.paykbd-dots{ display:flex; justify-content:center; gap:14px; margin:20px 0 6px; }
+.paykbd-dots i{
+  width:14px; height:14px; border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.5);
+  transition:background .14s, border-color .14s, transform .14s;
+}
+.paykbd-dots i.fill{ background:#fff; border-color:#fff; transform:scale(1.1); }
+.paykbd-err{ text-align:center; font-size:12px; color:#FF6961; min-height:16px; margin-bottom:6px; }
+.paykbd-grid{
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:11px 10px; margin-top:6px;
+}
+.paykbd-grid button{
+  height:48px; border-radius:11px; border:none;
+  background:rgba(255,255,255,.14); color:#fff;
+  font-size:23px; font-family:inherit; cursor:pointer;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.12);
+  transition:background .14s;
+}
+.paykbd-grid button:active{ background:rgba(255,255,255,.4); }
+.paykbd-grid .blank{ background:none; box-shadow:none; pointer-events:none; }
+.paykbd-grid .paykbd-del{ background:rgba(255,255,255,.08); display:flex; align-items:center; justify-content:center; }
+
+/* ============ 红包拆开 Sheet（聊天内领取） ============ */
+.rp-open-cover{
+  display:flex; flex-direction:column; align-items:center;
+  padding:10px 6px 8px;
+  background:linear-gradient(180deg,#fa5151,#e8433b);
+  border-radius:14px; color:#fff;
+}
+.rp-open-cover .avatar{ margin-bottom:12px; background:rgba(255,255,255,.35); }
+.rp-open-cover b{ font-size:17px; font-weight:700; }
+.rp-open-cover i{ font-size:13px; opacity:.85; margin-top:7px; font-style:normal; }
+.rp-open-amt{ font-size:26px; font-weight:700; margin-top:10px; }
+#rp-open-btn{
+  margin-top:16px; width:86px; height:86px; border-radius:50%;
+  border:3px solid rgba(255,220,120,.9);
+  background:linear-gradient(160deg,#ffd97a,#ffb41e);
+  color:#8a4a00; font-size:34px; font-weight:700; font-family:'Kaiti SC','STKaiti',serif;
+  cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.22);
+  transition:transform .16s ease;
+}
+#rp-open-btn:active{ transform:scale(.92); }
+.rp-open-cover em{ font-size:11px; opacity:.72; margin-top:14px; font-style:normal; }
+
+/* ============ 聊天特殊消息气泡（红包/转账/亲属卡/回执/位置） ============ */
+.msg-wallet-card{
+  min-width:216px; max-width:236px;
+  border-radius:12px; padding:13px 14px 11px;
+  color:#fff; cursor:pointer; position:relative;
+  display:flex; align-items:center; gap:11px;
+  box-shadow:0 4px 12px rgba(0,0,0,.14);
+  transition:transform .16s ease, opacity .16s ease;
+  font-family:inherit; border:none; text-align:left;
+}
+.msg-wallet-card:active{ transform:scale(.97); opacity:.88; }
+.msg-wallet-card.rp{ background:linear-gradient(135deg,#ff8a6b,#fa5151); }
+.msg-wallet-card.tf{ background:linear-gradient(135deg,#ffc93d,#ff9d00); }
+.msg-wallet-card.rc{ background:linear-gradient(135deg,#4cd97b,#07c160); }
+.mwc-icon{
+  flex:none; width:40px; height:40px; border-radius:11px;
+  background:rgba(255,255,255,.22);
+  display:flex; align-items:center; justify-content:center;
+}
+.mwc-main{ flex:1; min-width:0; }
+.mwc-title{ font-size:14.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mwc-sub{ font-size:11px; opacity:.85; margin-top:3px; white-space:nowrap; }
+.mwc-status{ font-size:10.5px; opacity:.75; margin-top:2px; }
+.msg-receipt{
+  align-self:center; max-width:78%;
+  margin:2px 12px; padding:7px 14px;
+  background:var(--fill); border-radius:100px;
+  font-size:11.5px; color:var(--text-3);
+  text-align:center; line-height:1.6;
+}
+.msg-location{
+  min-width:180px; max-width:210px; border-radius:12px; overflow:hidden;
+  cursor:pointer; background:var(--card);
+  box-shadow:0 3px 10px rgba(0,0,0,.1);
+  display:block; border:none; padding:0; text-align:left; font-family:inherit;
+  transition:transform .16s ease;
+}
+.msg-location:active{ transform:scale(.97); }
+.msg-location .loc-map{
+  height:96px;
+  background:linear-gradient(160deg,#dcecc8 0%,#c4dfae 40%,#a8d0e8 100%);
+  position:relative;
+}
+.msg-location .loc-map::after{
+  content:''; position:absolute; left:50%; top:50%;
+  width:16px; height:16px; margin:-8px 0 0 -8px;
+  border-radius:50% 50% 50% 0;
+  background:#FF3B30; transform:rotate(-45deg);
+  box-shadow:0 2px 6px rgba(0,0,0,.3);
+}
+.msg-location .loc-info{ padding:10px 12px; }
+.msg-location .loc-name{ font-size:13.5px; font-weight:600; color:var(--text); }
+.msg-location .loc-addr{ font-size:11px; color:var(--text-3); margin-top:3px; }
